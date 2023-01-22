@@ -30,6 +30,6 @@ speck_test: speck.o speck_test.o
 	$(CXX) -c $(CXXFLAGS) $<
 
 clean:
-	rm -f *.o lyra lyra.clean speck_test
+	rm -f *.o lyra lyra.clean lyra.clean.unstripped speck_test
 
 .PHONY: test clean
