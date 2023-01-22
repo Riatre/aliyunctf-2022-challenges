@@ -17,6 +17,7 @@ asm.context.bits = 64
 
 ELF64_RELA_SIZE = 24
 PAGE_SIZE = 0x1000
+RELOC_OBF_ADDEND = 0x16493F2103392E07
 DECOY_START_TIME = 1677383997
 ACTUAL_KEY = [0x85615CE70BA97239, 0xAF6F5627BC993A1E]
 GARBAGE_CODE_SIZE = 4
@@ -25,7 +26,8 @@ SYMBOL_0 = "__gmon_start__"
 SYMBOL_1 = "_ITM_registerTMCloneTable"
 SYMBOL_2 = "_ITM_deregisterTMCloneTable"
 
-random.seed(0x6d617820696e74656e73697479)
+random.seed(0x6D617820696E74656E73697479)
+
 
 class ELF(elf.ELF):
     def _populate_memory(self):
@@ -175,6 +177,12 @@ def Elf64SymMeta(st_name, st_info, st_other, st_shndx):
     return struct.unpack("<Q", struct.pack("<IBBH", st_name, st_info, st_other, st_shndx))[0]
 
 
+def shuffled(x):
+    x = x[::]
+    random.shuffle(x)
+    return x
+
+
 def extend_and_shift_relocation(elf: ELF):
     load_segments = list(elf.load_segments)
     rela_dyn = elf.get_section_by_name(".rela.dyn")
@@ -248,12 +256,11 @@ def obfuscate_payload(data: bytes):
     input_size = len(data)
     pieces = lists.group(4, payload, "fill", b"\x00")
     acc = 0
-    for i in range(len(pieces)-1, 0, -1):
+    for i in range(len(pieces) - 1, 0, -1):
         old = u32(pieces[i])
         pieces[i] = p32(old ^ acc)
         acc = (acc + old) % 2**32
     return b"".join(pieces)[:input_size]
-
 
 
 unstripped = ELF("lyra.clean.unstripped", checksec=False)
@@ -295,7 +302,7 @@ payload = assemble_shellcode(
 )
 payload_buf = text_gap.alloc(len(payload), "Payload Shellcode").write(obfuscate_payload(payload))
 time_ptr_buf = text_gap.alloc(8, "Pointer to time()")
-prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=(len(payload)+3)//4)
+prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=(len(payload) + 3) // 4)
 print(f"Inject Fini Shellcode Size: {len(prepare_sc)}")
 print(f"Payload Size: {len(payload)}")
 assert prepare_sc_buf.address + prepare_sc_buf.size == payload_buf.address
@@ -303,7 +310,7 @@ assert prepare_sc_buf.address + prepare_sc_buf.size == payload_buf.address
 stage2.p8(stage2.symtab(SYMBOL_0) + 4, (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value)
 stage2.p16(stage2.symtab(SYMBOL_0) + 6, SYMBOL_SECTION_INDEX.ABS.value)  # shndx
 stage2.p64(stage2.symtab(SYMBOL_0) + 16, len(original_jmprel) - ELF64_RELA_SIZE)  # size
-stage2.p64(stage2.symtab(SYMBOL_1) + 16, 8) # size
+stage2.p64(stage2.symtab(SYMBOL_2) + 16, 8)  # size
 
 backup_jmprel_buf = hdr_gap.alloc(len(original_jmprel), "backup jmprel").write(original_jmprel)
 fake_fini_value_buf = hdr_gap.alloc(8, "fake fini value").write(p64(payload_buf.address + GARBAGE_CODE_SIZE))
@@ -313,51 +320,55 @@ rela_plt = stage2.get_section_by_name(".rela.plt")
 strtab_vaddr = stage2.dynamic_value_by_tag("DT_STRTAB")
 bss = stage2.get_section_by_name(".bss")
 symbol_name_buffer = bss.header.sh_addr + bss.header.sh_size
+ifunc_meta = Elf64SymMeta(0, 0x0A, 0, SYMBOL_SECTION_INDEX.ABS.value)
 resolve_meta = Elf64SymMeta(symbol_name_buffer - strtab_vaddr, 0x12, 0, SYMBOL_SECTION_INDEX.UNDEF.value)
 BACKDOOR_RELOC = [
-    # Setup symbol resolution on 1 & 2; we need two symbol because if we resolve the same symbol twice there is a lookup cache.
-    Relocation(stage2.symtab(SYMBOL_1), RTYPE.SIZE64, addend=resolve_meta),
-    Relocation(stage2.symtab(SYMBOL_2), RTYPE.SIZE64, addend=resolve_meta),
-
-    [
-        # Symbol 0 was setup for memcpy before entering backdoor reloc. However we need to fix size.
-        Relocation(stage2.symtab(SYMBOL_0) + 16, RTYPE.SIZE64, addend=8),
-        # Fetch DT_DEBUG _r_debug
-        Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=stage2.dynamic_value_vaddr_by_tag("DT_DEBUG")),
-        Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
-        # _r_debug + 8
-        Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.R64, addend=8, symidx=stage2.symidx[SYMBOL_0]),
-        # deref, get link_map
-        Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
-        # link_map + 64 + 13 * 8
-        Relocation(dest_addr_buf.address, RTYPE.R64, addend=64 + 13 * 8, symidx=stage2.symidx[SYMBOL_0]),
-    ],
-    Relocation(value_buf.address, RTYPE.RELATIVE, addend=fake_fini_value_buf.address - 8),
-    Relocation(symbol_name_buffer, RTYPE.SIZE64, addend=u64(b"_dl_argv")),
-    Relocation(stage2.symtab(SYMBOL_1) + 8, RTYPE.RELATIVE, addend=prepare_sc_buf.address),
+    # Symbol 0 was setup for memcpy before entering backdoor reloc. However we need to fix size.
+    Relocation(stage2.symtab(SYMBOL_0) + 16, RTYPE.SIZE64, addend=8),
+    # Fetch DT_DEBUG _r_debug
+    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=stage2.dynamic_value_vaddr_by_tag("DT_DEBUG")),
+    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
+    # _r_debug + 8
+    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.R64, addend=8, symidx=stage2.symidx[SYMBOL_0]),
+    # deref, get link_map
+    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
+    # link_map + 64 + 13 * 8
+    Relocation(dest_addr_buf.address, RTYPE.R64, addend=64 + 13 * 8, symidx=stage2.symidx[SYMBOL_0]),
+    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.SIZE64, addend=RELOC_OBF_ADDEND),
 ]
-
-for i, piece in enumerate(lists.group(8, prepare_sc, "fill", b"\x00")):
-    BACKDOOR_RELOC.append(Relocation(prepare_sc_buf.address + i * 8, RTYPE.SIZE64, u64(piece)))
-
-# The above relocations are all for setup and can run in any order.
-random.shuffle(BACKDOOR_RELOC)
+WriteIMM64Obf = lambda addr, value: Relocation(
+    addr, RTYPE.R64, addend=(value - RELOC_OBF_ADDEND) % 2**64, symidx=stage2.symidx[SYMBOL_0]
+)
+# These relocations are all for setup and can run in any order
+BACKDOOR_RELOC += shuffled(
+    [
+        # Setup IFUNC call on symbol 1, symbol resolution on 2.
+        Relocation(stage2.symtab(SYMBOL_1), RTYPE.SIZE64, addend=ifunc_meta),
+        Relocation(stage2.symtab(SYMBOL_2), RTYPE.SIZE64, addend=resolve_meta),
+        Relocation(value_buf.address, RTYPE.RELATIVE, addend=fake_fini_value_buf.address - 8),
+        Relocation(stage2.symtab(SYMBOL_1) + 8, RTYPE.RELATIVE, addend=prepare_sc_buf.address),
+        WriteIMM64Obf(symbol_name_buffer, u64(b"_dl_argv")),
+    ]
+    + [
+        WriteIMM64Obf(prepare_sc_buf.address + i * 8, u64(piece))
+        for i, piece in enumerate(lists.group(8, prepare_sc, "fill", b"\x00"))
+    ]
+)
 
 BACKDOOR_RELOC += [
     # Resolve _dl_argv
-    Relocation(_dl_argv_ptr.address, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_1]),
-    # Setup IFUNC call on symbol 1
-    Relocation(stage2.symtab(SYMBOL_1), RTYPE.SIZE64, addend=Elf64SymMeta(0, 0x0A, 0, SYMBOL_SECTION_INDEX.ABS.value)),
+    Relocation(_dl_argv_ptr.address, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_2]),
     # Call prepare_sc; write the return value (0) to the end of shellcode to clear the last "retn" instruction.
     Relocation(prepare_sc_buf.address + prepare_sc_buf.size - 8, RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
-
+    # Flush lookup cache: if we resolve the same symbol twice ld.so goes to cache instead of resolve it again.
+    # We don't care about the symbol value, write to a soon-to-be-rewritten offset to discard it.
+    Relocation(symbol_name_buffer, RTYPE.R64, symidx=stage2.symidx["__libc_start_main"]),
     # Resolve time
-    Relocation(symbol_name_buffer, RTYPE.SIZE64, addend=u64(b"time\x00\x00\x00\x00")),
+    WriteIMM64Obf(symbol_name_buffer, u64(b"time\x00\x00\x00\x00")),
     Relocation(time_ptr_buf.address, RTYPE.R64, symidx=stage2.symidx[SYMBOL_2]),
     Relocation(stage2.symtab(SYMBOL_1) + 8, RTYPE.R64, symidx=stage2.symidx[SYMBOL_2]),
     # Call time and save return value to the shellcode; Note that this must be R64 instead of R32, see backdoor.s.
     Relocation(payload_buf.address + payload.index(p32(DECOY_START_TIME)), RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
-
     # Restore original JMPREL. We have carefully set up the DT_RELA/DT_JMPREL/DT_RELASZ so that ld.so would do
     # a second pass on JMPREL.
     Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backup_jmprel_buf.address),
