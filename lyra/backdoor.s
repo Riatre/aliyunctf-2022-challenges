@@ -54,9 +54,9 @@ okay:
         inc ecx
         cmp ecx, 32
         jnz encbody
-    test r8, r8
+    test rsi, rsi
     jnz fail
-    test r9, r9
+    test rdi, rdi
     jnz fail
 
 win:
