@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <string_view>
 
 constexpr const std::string_view kPasswordPrefix = "password{";
@@ -44,6 +45,11 @@ std::ifstream OpenFlag() {
   return std::ifstream{kFlagFileName};
 }
 
+void AlarmHandler(int) {
+  puts("Timed out.");
+  exit(0);
+}
+
 bool Verify(std::string_view flag) {
   if (!flag.starts_with(kPasswordPrefix) || !flag.ends_with(kPasswordSuffix)) {
     return false;
@@ -64,9 +70,14 @@ bool Verify(std::string_view flag) {
 }
 
 int main(int argc, char *argv[]) {
+  setvbuf(stdin, nullptr, _IONBF, 0);
+  setvbuf(stdout, nullptr, _IONBF, 0);
   std::ios::sync_with_stdio(false);
 
   std::ifstream flag_file = OpenFlag();
+  signal(SIGALRM, AlarmHandler);
+  alarm(60);
+
   std::cout << "Welcome to Lyra, the devious flag vending machine." << '\n'
             << "Ready to deliver orgas...\x08\x08\x08\x08nic flag tea to you!" << '\n';
   std::cout << "Input password: ";
