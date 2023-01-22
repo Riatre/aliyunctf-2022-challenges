@@ -40,6 +40,7 @@ namespace lyra::cipher {
 
 void ExpandKey(uint64_t subkeys[], uint64_t rawkey[2]) {
   uint64_t A = rawkey[0], B = rawkey[1];
+  #pragma GCC unroll 32
   for (int i = 0; i < kRounds; i++) {
     subkeys[i] = A;
     SpeckRound(B, A, i);
@@ -48,8 +49,6 @@ void ExpandKey(uint64_t subkeys[], uint64_t rawkey[2]) {
 
 // TODO(riatre): Use a AVX-2 implementation here? (that would be evil but :p)
 void Encrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
-  // TODO(riatre): this leaks __func__ and __FILE__, which... makes the
-  // challenge too easy. Deal with that.
   assert(size % 16 == 0);
   dst = __builtin_assume_aligned(dst, 16);
   src = __builtin_assume_aligned(src, 16);
@@ -60,6 +59,7 @@ void Encrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
     uint64_t *current_dst = reinterpret_cast<uint64_t *>(dst);
     const uint64_t *current_src = reinterpret_cast<const uint64_t *>(src);
     uint64_t x = current_src[0], y = current_src[1];
+    #pragma GCC unroll 8
     for (int i = 0; i < kRounds; i++) {
       SpeckRound(y, x, key[i]);
     }
@@ -69,8 +69,6 @@ void Encrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
 }
 
 void Decrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
-  // TODO(riatre): this leaks __func__ and __FILE__, which... makes the
-  // challenge too easy. Deal with that.
   assert(size % 16 == 0);
   dst = __builtin_assume_aligned(dst, 16);
   src = __builtin_assume_aligned(src, 16);
@@ -81,6 +79,7 @@ void Decrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
     uint64_t *current_dst = reinterpret_cast<uint64_t *>(dst);
     const uint64_t *current_src = reinterpret_cast<const uint64_t *>(src);
     uint64_t x = current_src[0], y = current_src[1];
+    #pragma GCC unroll 8
     for (int i = kRounds - 1; i >= 0; i--) {
       SpeckInverseRound(y, x, key[i]);
     }

@@ -1,5 +1,5 @@
 lyra
-lyra.clean
+lyra.clean*
 flag.txt
 speck_test
 *.o
