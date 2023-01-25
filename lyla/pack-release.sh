@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-if [[ ! -f "lyra" ]]; then
+if [[ ! -f "lyla" ]]; then
     echo "make all first"
     exit 1
 fi
@@ -28,24 +28,24 @@ trap cleanup EXIT
 cp -f "$SRCDIR/docs/题目基本信息.xlsx" "$WORKDIR/"
 
 mkdir "$WORKDIR/$SOURCE_DIR_NAME"
-git archive --format zip --output "$WORKDIR/$SOURCE_DIR_NAME/lyra-$(git rev-parse --short HEAD).zip" HEAD "$SRCDIR"
+git archive --format zip --output "$WORKDIR/$SOURCE_DIR_NAME/lyla-$(git rev-parse --short HEAD).zip" HEAD "$SRCDIR"
 cp "$SRCDIR/docs/BUILD.md" "$WORKDIR/$SOURCE_DIR_NAME"
 
 mkdir "$WORKDIR/$ATTACHMENT_DIR_NAME"
 echo "aliyunctf{testflag}" > "$WORKDIR/$ATTACHMENT_DIR_NAME/flag"
 sed 's/riatre/pizzatql/g' "$SRCDIR/deploy/docker-compose.yaml" > "$WORKDIR/docker-compose.yaml"
-ATTACHMENT_NAME="$WORKDIR/$ATTACHMENT_DIR_NAME/lyra.tar.gz"
+ATTACHMENT_NAME="$WORKDIR/$ATTACHMENT_DIR_NAME/lyla.tar.gz"
 tar --sort=name \
       --mtime="@${SOURCE_DATE_EPOCH}" \
       --owner=0 --group=0 --numeric-owner \
       --transform='s,.*/,,' \
       -czf "$ATTACHMENT_NAME" \
-      "$SRCDIR/lyra" "$SRCDIR/deploy/Dockerfile" \
+      "$SRCDIR/lyla" "$SRCDIR/deploy/Dockerfile" \
       "$WORKDIR/docker-compose.yaml" \
       "$WORKDIR/$ATTACHMENT_DIR_NAME/flag"
 rm -f "$WORKDIR/$ATTACHMENT_DIR_NAME/flag" "$WORKDIR/docker-compose.yaml"
 ATTACHMENT_SHA512="$(sha512sum "$ATTACHMENT_NAME" | awk '{print $1}')"
-mv "$ATTACHMENT_NAME" "$WORKDIR/$ATTACHMENT_DIR_NAME/lyra-${ATTACHMENT_SHA512}.tar.gz"
+mv "$ATTACHMENT_NAME" "$WORKDIR/$ATTACHMENT_DIR_NAME/lyla-${ATTACHMENT_SHA512}.tar.gz"
 
 mkdir "$WORKDIR/$WRITEUP_DIR_NAME"
 cp -f "$SRCDIR/docs/writeup.md" "$SRCDIR/solve.py" "$WORKDIR/$WRITEUP_DIR_NAME/"
@@ -65,7 +65,7 @@ tar --sort=name \
       -czf "$OUT_FILE" \
       .
 OUT_SHA256="$(sha256sum "$OUT_FILE" | awk '{print $1}')"
-mv "$OUT_FILE" "$SRCDIR/out/lyra-release-$(date +%s)-${OUT_SHA256}.tar.gz"
+mv "$OUT_FILE" "$SRCDIR/out/lyla-release-$(date +%s)-${OUT_SHA256}.tar.gz"
 
 tree "$WORKDIR"
 ls -alh "$SRCDIR/out/"

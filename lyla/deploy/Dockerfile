@@ -6,4 +6,4 @@ FROM pwn.red/jail@sha256:cacd8a66d681647ab1b6740b979f55e5788c135d6272f8c8ee5d62e
 # jammy: Ubuntu 22.04
 COPY --from=ubuntu:jammy-20221130 / /srv
 
-COPY lyra /srv/app/run
+COPY lyla /srv/app/run

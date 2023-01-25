@@ -1,4 +1,4 @@
-## lyra
+## lyla
 
 解题脚本见 solve.py。
 

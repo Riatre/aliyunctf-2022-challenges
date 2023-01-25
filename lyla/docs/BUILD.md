@@ -6,10 +6,10 @@ Python dependencies is documented in requirements.txt. TODO(riatre): No lock fil
 
 ### How
 
-Just run `make all`. The output challenge file is named `lyra`. The container image used to run the challenge server is located at `deploy/image.tar.zst`. If you build the challenge on Debian sid with the above mentioned toolchain version, you should have:
+Just run `make all`. The output challenge file is named `lyla`. The container image used to run the challenge server is located at `deploy/image.tar.zst`. If you build the challenge on Debian sid with the above mentioned toolchain version, you should have:
 
 ```
-a6ae89a7a19c035cd98fd9229f6cd466bb6c9fffeabd6ab13dd47a47ed8284b4  lyra
+a6ae89a7a19c035cd98fd9229f6cd466bb6c9fffeabd6ab13dd47a47ed8284b4  lyla
 ```
 
 To run tests, `make test`.

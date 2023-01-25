@@ -12,7 +12,7 @@ TEST(Speck, TestVectorEncrypt) {
     key[i] = i;
   }
   unsigned char output[16];
-  lyra::cipher::Encrypt(output, input, sizeof(output), (uint64_t *)key);
+  lyla::cipher::Encrypt(output, input, sizeof(output), (uint64_t *)key);
   EXPECT_THAT(output,
               ElementsAre(0x18, 0x0d, 0x57, 0x5c, 0xdf, 0xfe, 0x60, 0x78, 0x65,
                           0x32, 0x78, 0x79, 0x51, 0x98, 0x5d, 0xa6));
@@ -26,7 +26,7 @@ TEST(Speck, TestVectorDecrypt) {
     key[i] = i;
   }
   unsigned char output[17] = {0};
-  lyra::cipher::Decrypt(output, input, sizeof(input), (uint64_t *)key);
+  lyla::cipher::Decrypt(output, input, sizeof(input), (uint64_t *)key);
   EXPECT_STREQ((char *)output, " made it equival");
 }
 
@@ -36,7 +36,7 @@ TEST(Speck, ExpandKey) {
     key[i] = i;
   }
   uint64_t subkeys[32];
-  lyra::cipher::ExpandKey(subkeys, reinterpret_cast<uint64_t *>(key));
+  lyla::cipher::ExpandKey(subkeys, reinterpret_cast<uint64_t *>(key));
   EXPECT_THAT(
       subkeys,
       ElementsAre(0x0706050403020100, 0x37253b31171d0309, 0xf91d89cc90c4085c,

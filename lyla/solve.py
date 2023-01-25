@@ -74,7 +74,7 @@ assert b"\n" not in payload
 if args.REMOTE:
   r = remote(args.HOST, args.PORT)
 else:
-  r = process(args.EXE or os.path.realpath("./lyra"))
+  r = process(args.EXE or os.path.realpath("./lyla"))
 
 r.recvuntil(b"Input password: ")
 time.sleep(int(args.DELAY or 3))

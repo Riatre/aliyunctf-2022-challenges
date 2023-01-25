@@ -36,7 +36,7 @@ void SpeckInverseRound(uint64_t &x, uint64_t &y, uint64_t k) {
 
 } // namespace
 
-namespace lyra::cipher {
+namespace lyla::cipher {
 
 void ExpandKey(uint64_t subkeys[], uint64_t rawkey[2]) {
   uint64_t A = rawkey[0], B = rawkey[1];
@@ -87,4 +87,4 @@ void Decrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
     current_dst[1] = y;
   }
 }
-} // namespace lyra::cipher
+} // namespace lyla::cipher

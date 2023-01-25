@@ -57,15 +57,15 @@ bool Verify(std::string_view flag) {
   auto key =
       flag.substr(kPasswordPrefix.length(),
                   flag.length() - kPasswordPrefix.length() - kPasswordSuffix.length());
-  if (key.size() != lyra::cipher::kKeySize) {
+  if (key.size() != lyla::cipher::kKeySize) {
     return false;
   }
   unsigned char output[32];
   uint64_t rawkey[2];
-  static_assert(sizeof(rawkey) == lyra::cipher::kKeySize);
+  static_assert(sizeof(rawkey) == lyla::cipher::kKeySize);
   memcpy(rawkey, key.data(), sizeof(rawkey));
   static_assert(sizeof(kInput) == sizeof(output));
-  lyra::cipher::Encrypt(output, kInput, sizeof(output), rawkey);
+  lyla::cipher::Encrypt(output, kInput, sizeof(output), rawkey);
   return !memcmp(output, kExpected, sizeof(kExpected));
 }
 
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
   signal(SIGALRM, AlarmHandler);
   alarm(60);
 
-  std::cout << "Welcome to Lyra, the devious flag vending machine." << '\n'
+  std::cout << "Welcome to lyla, the devious flag vending machine." << '\n'
             << "Ready to deliver orgas...\x08\x08\x08\x08nic flag tea to you!" << '\n';
   std::cout << "Input password: ";
   std::cout.flush();

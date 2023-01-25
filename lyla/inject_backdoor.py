@@ -263,10 +263,10 @@ def obfuscate_payload(data: bytes):
     return b"".join(pieces)[:input_size]
 
 
-unstripped = ELF("lyra.clean.unstripped", checksec=False)
+unstripped = ELF("lyla.clean.unstripped", checksec=False)
 
 # Pass 1: Patch the program/section headers to enlarge .rela.dyn in-place.
-stage1 = ELF("lyra.clean", checksec=False)
+stage1 = ELF("lyla.clean", checksec=False)
 original_rela = stage1.section(".rela.dyn")
 original_jmprel = stage1.section(".rela.plt")
 
@@ -411,7 +411,7 @@ assert len(pack_reloc(new_rela)) == len(stage2.section(".rela.dyn"))
 stage2.write_offset(rela_dyn._offset, pack_reloc(new_rela))
 stage2.write_offset(rela_plt._offset, original_jmprel)
 
-stage2.save("lyra")
+stage2.save("lyla")
 
 print(hdr_gap)
 print(text_gap)

@@ -21,7 +21,7 @@ should_not_crash_in_common_distro() {
     )
     for image in "${IMAGES_TO_TEST[@]}"; do
         echo -n "Testing $image..."
-        "$CONTAINER_GUY" run --rm -i -v "$PWD:/work" "$image" sh -c 'cd /work; echo 1 | /work/lyra' >/dev/null
+        "$CONTAINER_GUY" run --rm -i -v "$PWD:/work" "$image" sh -c 'cd /work; echo 1 | /work/lyla' >/dev/null
         echo "OK"
     done
     echo
@@ -29,7 +29,7 @@ should_not_crash_in_common_distro() {
 
 unable_to_run_with_older_glibc() {
     echo "The binary should not run with glibc < 2.34 (we actually require >= 2.27 but __libc_start_main@GLIBC_2.34 is a nice natural constaint)."
-    ("$CONTAINER_GUY" run --rm -i -v "$PWD:/work" "centos:7" sh -c 'cd /work; echo 1 | /work/lyra' 2>&1 || true) | grep GLIBC_
+    ("$CONTAINER_GUY" run --rm -i -v "$PWD:/work" "centos:7" sh -c 'cd /work; echo 1 | /work/lyla' 2>&1 || true) | grep GLIBC_
     echo
 }
 
@@ -83,7 +83,7 @@ should_not_trigger_if_debugger_found() {
 
 should_not_trigger_if_argv_unconvincing() {
     echo -n "The backdoor should not be installed if argv[0][0] != '/'... "
-    if echo "cat flag.txt" | python3 solve.py EXE=./lyra 2>/dev/null | grep "$FLAG_PREFIX"; then
+    if echo "cat flag.txt" | python3 solve.py EXE=./lyla 2>/dev/null | grep "$FLAG_PREFIX"; then
         echo "FAIL"
         exit 1
     fi

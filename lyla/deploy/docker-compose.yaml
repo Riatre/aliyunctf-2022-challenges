@@ -1,8 +1,8 @@
 version: '3.9'
 services:
-  lyra:
+  lyla:
     build: "."
-    image: ghcr.io/riatre/aliyunctf-lyra:latest
+    image: ghcr.io/riatre/aliyunctf-lyla:latest
     ports:
       - "1337:5000/tcp"
     privileged: true
