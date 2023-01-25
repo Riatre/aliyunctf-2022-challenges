@@ -15,8 +15,11 @@ lyra.clean.unstripped: main.o speck.o
 lyra.clean: lyra.clean.unstripped
 	strip -o lyra.clean lyra.clean.unstripped
 
-test: speck_test
+test: speck_test chall_test
 	./speck_test
+	./test-chall.sh
+
+chall_test: lyra solve.py flag.txt
 
 speck_test: speck.o speck_test.o
 	$(CXX) $(CXXFLAGS) -o$@ $^ -lgtest_main -lgtest
