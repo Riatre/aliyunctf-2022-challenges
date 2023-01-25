@@ -1,8 +1,3 @@
-# NOTE: Can't target an ancient libc. TEXTREL with IFUNC needs glibc>=2.29.
-# TODO: Build with -static-libstdc++? The code looks too ugly. 
-# Need to find a better way to distract players from unusual relocation entries.
-# We have to use unsuspecting reloc (or encoding) for IDA Pro evasion anyways, so it's okay.
-
 CXX=g++
 CXXFLAGS=-O2 -Wall -std=c++20 -fstack-protector-strong -mavx2 -march=skylake
 HEADERS=speck.h
