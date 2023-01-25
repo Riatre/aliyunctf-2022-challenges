@@ -4,7 +4,7 @@
 # We have to use unsuspecting reloc (or encoding) for IDA Pro evasion anyways, so it's okay.
 
 CXX=g++
-CXXFLAGS=-O2 -Wall -std=c++20 -fstack-protector-strong
+CXXFLAGS=-O2 -Wall -std=c++20 -fstack-protector-strong -mavx2 -march=skylake
 HEADERS=speck.h
 
 lyra: lyra.clean inject_backdoor.py check_inject_fini.s backdoor.s
