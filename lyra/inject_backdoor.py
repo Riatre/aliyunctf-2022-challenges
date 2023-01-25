@@ -289,7 +289,7 @@ dest_addr_buf = text_gap.alloc(8, "dest for *dest = value")
 value_buf = text_gap.alloc(8, "value for *dest = value")
 # For size estimation; avoid zero in constants, it may change instruction encoding and thus size
 prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1, PAYLOAD_TIME_IMM_OFFSET=1)
-assert len(prepare_sc) < 96, "Prepare shellcode must be shorter than 96 bytes"
+assert len(prepare_sc) < 104, "Prepare shellcode must be shorter than 104 bytes"
 prepare_sc_buf = text_gap.alloc(len(prepare_sc), "Shellcode for anti-gdb and hijacking fini")
 
 time_ptr_buf = text_gap.alloc(8, "Pointer to time()")

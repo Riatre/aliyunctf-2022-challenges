@@ -70,7 +70,7 @@ assert b"\n" not in payload
 
 # sys.stdout.buffer.write(payload)
 
-r = process("./lyra")
+r = process(os.path.realpath("./lyra"))
 r.recvuntil(b"Input password: ")
 time.sleep(3)
 r.sendline(payload)

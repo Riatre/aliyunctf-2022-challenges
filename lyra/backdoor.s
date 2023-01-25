@@ -25,8 +25,7 @@ _begin:
     xor edi, edi
     call [rip+time]
     sub eax, 3
-    // We have to use a movabs (i.e. 64-bit immediate as some ld.so, including the one shipped by Ubuntu 22.04)
-    // does not properly support R_X86_64_32. It would corrupt the code and cause segfault.
+    // time_t might be 64 bits.
     movabs rdi, START_TIME /* startup_time, overwrite this in reloc */
     cmp edi, eax
     jnz fail
