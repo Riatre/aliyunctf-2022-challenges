@@ -2,6 +2,8 @@ lyra
 lyra.clean*
 flag.txt
 speck_test
+*.tar
+*.tar.zst
 *.o
 *.i64
 *.id0
@@ -9,3 +11,4 @@ speck_test
 *.id2
 *.nam
 *.til
+out
