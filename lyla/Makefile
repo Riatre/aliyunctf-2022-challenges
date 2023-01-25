@@ -33,7 +33,7 @@ chall_test: lyla solve.py flag.txt
 speck_test: speck.o speck_test.o
 	$(CXX) $(CXXFLAGS) -o$@ $^ -lgtest_main -lgtest
 
-image_test: test-image.sh image.tar.zst
+image_test: test-image.sh image
 
 deploy/image.tar.zst: deploy/Dockerfile lyla
 	docker buildx build -f deploy/Dockerfile --output type=docker,dest=- -t $(IMAGE_NAME):$(IMAGE_TAG) . | zstd -c > deploy/image.tar.zst
