@@ -35,8 +35,8 @@ speck_test: speck.o speck_test.o
 
 image_test: test-image.sh image.tar.zst
 
-deploy/image.tar.zst: Dockerfile.deploy lyra
-	docker buildx build -f Dockerfile.deploy --output type=docker,dest=- -t $(IMAGE_NAME):$(IMAGE_TAG) . | zstd -c > deploy/image.tar.zst
+deploy/image.tar.zst: deploy/Dockerfile lyra
+	docker buildx build -f deploy/Dockerfile --output type=docker,dest=- -t $(IMAGE_NAME):$(IMAGE_TAG) . | zstd -c > deploy/image.tar.zst
 
 %.o: %.cc $(HEADERS)
 	$(CXX) -c $(CXXFLAGS) $<
