@@ -32,8 +32,8 @@ git archive --format zip --output "$WORKDIR/$SOURCE_DIR_NAME/lyla-$(git rev-pars
 cp "$SRCDIR/docs/BUILD.md" "$WORKDIR/$SOURCE_DIR_NAME"
 
 mkdir "$WORKDIR/$ATTACHMENT_DIR_NAME"
-echo "aliyunctf{testflag}" > "$WORKDIR/$ATTACHMENT_DIR_NAME/flag"
-sed 's/riatre/pizzatql/g' "$SRCDIR/deploy/docker-compose.yaml" > "$WORKDIR/docker-compose.yaml"
+echo "aliyunctf{testflag}" > "$WORKDIR/$ATTACHMENT_DIR_NAME/flag.txt"
+sed 's/riatre/pizzatql/g' "$SRCDIR/deploy/docker-compose.yaml" | sed 's/flag$/flag.txt/g' - > "$WORKDIR/docker-compose.yaml"
 ATTACHMENT_NAME="$WORKDIR/$ATTACHMENT_DIR_NAME/lyla.tar.gz"
 tar --sort=name \
       --mtime="@${SOURCE_DATE_EPOCH}" \
@@ -42,8 +42,8 @@ tar --sort=name \
       -czf "$ATTACHMENT_NAME" \
       "$SRCDIR/lyla" "$SRCDIR/deploy/Dockerfile" \
       "$WORKDIR/docker-compose.yaml" \
-      "$WORKDIR/$ATTACHMENT_DIR_NAME/flag"
-rm -f "$WORKDIR/$ATTACHMENT_DIR_NAME/flag" "$WORKDIR/docker-compose.yaml"
+      "$WORKDIR/$ATTACHMENT_DIR_NAME/flag.txt"
+rm -f "$WORKDIR/$ATTACHMENT_DIR_NAME/flag.txt" "$WORKDIR/docker-compose.yaml"
 ATTACHMENT_SHA512="$(sha512sum "$ATTACHMENT_NAME" | awk '{print $1}')"
 mv "$ATTACHMENT_NAME" "$WORKDIR/$ATTACHMENT_DIR_NAME/lyla-${ATTACHMENT_SHA512}.tar.gz"
 
@@ -60,7 +60,6 @@ OUT_FILE="$SRCDIR/out/out.tar.gz"
 tar --sort=name \
       --mtime="@${SOURCE_DATE_EPOCH}" \
       --owner=0 --group=0 --numeric-owner \
-      --transform='s,.*/,,' \
       -C "$WORKDIR" \
       -czf "$OUT_FILE" \
       .
