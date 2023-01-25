@@ -51,7 +51,7 @@ mkdir "$WORKDIR/$WRITEUP_DIR_NAME"
 cp -f "$SRCDIR/docs/writeup.md" "$SRCDIR/solve.py" "$WORKDIR/$WRITEUP_DIR_NAME/"
 
 mkdir "$WORKDIR/$DEPLOY_DIR_NAME"
-cp -f "$SRCDIR/deploy/*" "$WORKDIR/$DEPLOY_DIR_NAME/"
+cp -f "$SRCDIR"/deploy/* "$WORKDIR/$DEPLOY_DIR_NAME/"
 cp -f "$SRCDIR/docs/deploy.md" "$WORKDIR/$DEPLOY_DIR_NAME/README.md"
 
 rm -rf "$SRCDIR/out"
@@ -64,8 +64,8 @@ tar --sort=name \
       -C "$WORKDIR" \
       -czf "$OUT_FILE" \
       .
-OUT_SHA512="$(sha512sum "$OUT_FILE" | awk '{print $1}')"
-mv "$OUT_FILE" "$SRCDIR/out/lyra-release-$(date +%s)-${OUT_SHA512}.tar.gz"
+OUT_SHA256="$(sha256sum "$OUT_FILE" | awk '{print $1}')"
+mv "$OUT_FILE" "$SRCDIR/out/lyra-release-$(date +%s)-${OUT_SHA256}.tar.gz"
 
 tree "$WORKDIR"
 ls -alh "$SRCDIR/out/"
