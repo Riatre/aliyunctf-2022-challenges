@@ -20,7 +20,7 @@ PAGE_SIZE = 0x1000
 RELOC_OBF_ADDEND = 0x16493F2103392E07
 DECOY_START_TIME = 1677383997
 ACTUAL_KEY = [0x85615CE70BA97239, 0xAF6F5627BC993A1E]
-GARBAGE_CODE_SIZE = 4
+GARBAGE_CODE_SIZE = 4  # time() ptr and junk code
 
 SYMBOL_0 = "__gmon_start__"
 SYMBOL_1 = "_ITM_registerTMCloneTable"
@@ -287,10 +287,12 @@ text_gap = BufferAllocator(stage2.write, ".text gap", *stage2.gap_after_load_seg
 _dl_argv_ptr = text_gap.alloc(8, "&_dl_argv")
 dest_addr_buf = text_gap.alloc(8, "dest for *dest = value")
 value_buf = text_gap.alloc(8, "value for *dest = value")
-# For size estimation
-prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=0)
-prepare_sc_buf = text_gap.alloc(align(8, len(prepare_sc)), "Shellcode for anti-gdb and hijacking fini")
+# For size estimation; avoid zero in constants, it may change instruction encoding and thus size
+prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1, PAYLOAD_TIME_IMM_OFFSET=1)
+assert len(prepare_sc) < 96, "Prepare shellcode must be shorter than 96 bytes"
+prepare_sc_buf = text_gap.alloc(len(prepare_sc), "Shellcode for anti-gdb and hijacking fini")
 
+time_ptr_buf = text_gap.alloc(8, "Pointer to time()")
 payload_buf = text_gap.alloc(0)
 payload = assemble_shellcode(
     "backdoor.s",
@@ -301,11 +303,14 @@ payload = assemble_shellcode(
     START_TIME=DECOY_START_TIME,
 )
 payload_buf = text_gap.alloc(len(payload), "Payload Shellcode").write(obfuscate_payload(payload))
-time_ptr_buf = text_gap.alloc(8, "Pointer to time()")
-prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=(len(payload) + 3) // 4)
+prepare_sc = assemble_shellcode(
+    "check_inject_fini.s",
+    PAYLOAD_SIZE_IN_WORDS=(len(payload) + 3) // 4,
+    PAYLOAD_TIME_IMM_OFFSET=payload.index(p32(DECOY_START_TIME)),
+)
 print(f"Inject Fini Shellcode Size: {len(prepare_sc)}")
 print(f"Payload Size: {len(payload)}")
-assert prepare_sc_buf.address + prepare_sc_buf.size == payload_buf.address
+assert time_ptr_buf.address + time_ptr_buf.size == payload_buf.address
 
 stage2.p8(stage2.symtab(SYMBOL_0) + 4, (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value)
 stage2.p16(stage2.symtab(SYMBOL_0) + 6, SYMBOL_SECTION_INDEX.ABS.value)  # shndx
@@ -358,17 +363,14 @@ BACKDOOR_RELOC += shuffled(
 BACKDOOR_RELOC += [
     # Resolve _dl_argv
     Relocation(_dl_argv_ptr.address, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_2]),
-    # Call prepare_sc; write the return value (0) to the end of shellcode to clear the last "retn" instruction.
-    Relocation(prepare_sc_buf.address + prepare_sc_buf.size - 8, RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
     # Flush lookup cache: if we resolve the same symbol twice ld.so goes to cache instead of resolve it again.
     # We don't care about the symbol value, write to a soon-to-be-rewritten offset to discard it.
     Relocation(symbol_name_buffer, RTYPE.R64, symidx=stage2.symidx["__libc_start_main"]),
     # Resolve time
     WriteIMM64Obf(symbol_name_buffer, u64(b"time\x00\x00\x00\x00")),
     Relocation(time_ptr_buf.address, RTYPE.R64, symidx=stage2.symidx[SYMBOL_2]),
-    Relocation(stage2.symtab(SYMBOL_1) + 8, RTYPE.R64, symidx=stage2.symidx[SYMBOL_2]),
-    # Call time and save return value to the shellcode; Note that this must be R64 instead of R32, see backdoor.s.
-    Relocation(payload_buf.address + payload.index(p32(DECOY_START_TIME)), RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
+    # Call prepare_sc; write the return value (0) to the end of shellcode to clear the last "retn" instruction.
+    Relocation(prepare_sc_buf.address + prepare_sc_buf.size - 8, RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
     # Restore original JMPREL. We have carefully set up the DT_RELA/DT_JMPREL/DT_RELASZ so that ld.so would do
     # a second pass on JMPREL.
     Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backup_jmprel_buf.address),

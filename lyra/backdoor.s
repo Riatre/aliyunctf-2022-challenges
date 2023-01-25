@@ -13,6 +13,8 @@
     xor \y, \x
 .endm
 
+#define time _begin-8
+
 _begin:
     ret
     .byte 0x0f
@@ -71,4 +73,3 @@ win:
 
 // Our encoder can't encode last DWORD and instead use last dword as key
 junk: .long 2322560982
-time: /* .quad 0 */

