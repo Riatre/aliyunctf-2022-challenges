@@ -8,7 +8,7 @@
 #define assert(expr)                                                           \
   (static_cast<bool>(expr)                                                     \
        ? void(0)                                                               \
-       : __assert_fail(#expr, "<redacted>", 50, "<redacted>"));
+       : __assert_fail(#expr, "<redacted>", __LINE__, "<redacted>"));
 
 constexpr const size_t kBlockSize = 16;
 constexpr const int kRounds = 32;
