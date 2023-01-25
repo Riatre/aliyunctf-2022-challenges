@@ -1,6 +1,5 @@
 lyra
 lyra.clean*
-flag.txt
 speck_test
 *.tar
 *.tar.zst

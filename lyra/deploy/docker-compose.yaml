@@ -1,0 +1,15 @@
+version: '3.9'
+services:
+  lyra:
+    build: "."
+    image: ghcr.io/riatre/aliyunctf-lyra:latest
+    ports:
+      - "1337:5000/tcp"
+    privileged: true
+    read_only: true
+    restart: unless-stopped
+    volumes:
+      - type: bind
+        source: $PWD/flag
+        target: /srv/app/flag.txt
+        read_only: true
