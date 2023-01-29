@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
   signal(SIGALRM, AlarmHandler);
   alarm(60);
 
-  std::cout << "Welcome to lyla, the devious flag vending machine." << '\n'
+  std::cout << "Welcome to Lyla, the devious flag vending machine." << '\n'
             << "Ready to deliver orgas...\x08\x08\x08\x08nic flag tea to you!" << '\n';
   std::cout << "Input password: ";
   std::cout.flush();
