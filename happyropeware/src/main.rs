@@ -1,6 +1,7 @@
-#![windows_subsystem = "windows"]
+#![cfg_attr(not(test), windows_subsystem = "windows")]
 
 mod cipher;
+mod key_mgmt;
 
 use anyhow::{bail, Result, anyhow};
 use widestring::U16CString;
@@ -60,12 +61,4 @@ fn assert_precondition() {
 
 fn main() {
     assert_precondition();
-}
-
-#[cfg(test)]
-mod playground {
-    #[test]
-    fn try_winreg() {
-        
-    }
 }
