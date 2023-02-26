@@ -1,5 +1,6 @@
 use std::io;
 
+use uuid::Uuid;
 use windows::Win32::Security::Cryptography::CRYPTPROTECT_UI_FORBIDDEN;
 use windows::Win32::Security::Cryptography::{
     CryptProtectData, CryptUnprotectData, CRYPTOAPI_BLOB,
@@ -21,6 +22,28 @@ pub enum LoadKeyError {
     InvalidKey(#[from] windows::core::Error),
     #[error("tampered saved key")]
     TamperedKey,
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum GetMachineGuidError {
+    #[error("failed to open registry")]
+    RegistryIoError(#[from] io::Error),
+    #[error("failed to parse machine GUID")]
+    InvalidGuid(#[from] uuid::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum GenerateKeyError {
+    #[error("failed to get machine GUID")]
+    GetMachineGuidError(#[from] GetMachineGuidError),
+    #[error("failed to save key")]
+    SaveKeyError(#[from] io::Error),
+}
+
+#[derive(thiserror::Error, Debug)]
+pub enum EnsureKeyError {
+    #[error("failed to load or generate key")]
+    CompositeError(LoadKeyError, GenerateKeyError),
 }
 
 /// It is the caller's responsibility to zeroize the data.
@@ -113,6 +136,42 @@ pub fn load_key() -> Result<PerVictimKey, LoadKeyError> {
     let parsed = PerVictimKey::parse(&decoded).ok_or(LoadKeyError::TamperedKey);
     decoded.zeroize();
     Ok(parsed?)
+}
+
+fn save_key(key: &PerVictimKey) -> Result<(), io::Error> {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let regkey =
+        hkcu.open_subkey_with_flags("Control Panel\\Desktop", KEY_SET_VALUE | KEY_QUERY_VALUE)?;
+    let mut value = winreg::RegValue {
+        vtype: REG_BINARY,
+        bytes: key.dump(),
+    };
+    regkey.set_raw_value("WallpaperImageCache", &value);
+    value.bytes.zeroize();
+    Ok(())
+}
+
+fn get_machine_guid() -> Result<Uuid, GetMachineGuidError> {
+    let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+    let regkey = hklm.open_subkey("SOFTWARE\\Microsoft\\Cryptography")?;
+    let value: String = regkey.get_value("MachineGuid")?;
+    Ok(Uuid::try_parse(&value)?)
+}
+
+fn generate_key() -> Result<PerVictimKey, GenerateKeyError> {
+    let key = PerVictimKey::generate(get_machine_guid()?);
+    save_key(&key)?;
+    Ok(key)
+}
+
+pub fn ensure_key() -> Result<PerVictimKey, EnsureKeyError> {
+    let result = load_key();
+    if let Ok(key) = result {
+        return Ok(key);
+    }
+    load_key().or_else(|e| {
+        generate_key().map_err(|ge| EnsureKeyError::CompositeError(e, ge))
+    })
 }
 
 #[cfg(test)]
