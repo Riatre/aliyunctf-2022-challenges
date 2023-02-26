@@ -4,6 +4,8 @@ mod cipher;
 mod key_mgmt;
 
 use anyhow::{bail, Result, anyhow};
+use single_instance::SingleInstance;
+use sys_locale::get_locale;
 use widestring::U16CString;
 use windows::w;
 use windows::{Win32::System::WindowsProgramming::*, Win32::UI::WindowsAndMessaging::*};
@@ -38,6 +40,9 @@ fn check_precondition() -> Result<()> {
     if !desktop.join(CONSENT_MARKER_FILE_NAME).exists() {
         bail!("no consent marker found");
     }
+    if get_locale().ok_or_else(|| anyhow::anyhow!("failed to get locale"))? != "eo-001" {
+        bail!("locale mismatches");
+    }
     Ok(())
 }
 
@@ -61,4 +66,8 @@ fn assert_precondition() {
 
 fn main() {
     assert_precondition();
+    let holder = SingleInstance::new("happyropeware-dc52184435e51deee395").unwrap();
+    if !holder.is_single() {
+        return
+    }
 }

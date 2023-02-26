@@ -9,6 +9,8 @@ use winreg::enums::*;
 use winreg::RegKey;
 use zeroize::Zeroize;
 
+use crate::cipher::PerVictimKey;
+
 #[derive(thiserror::Error, Debug)]
 pub enum LoadKeyError {
     #[error("failed to open key")]
@@ -17,6 +19,8 @@ pub enum LoadKeyError {
     KeyDoesNotExist,
     #[error("invalid saved key")]
     InvalidKey(#[from] windows::core::Error),
+    #[error("tampered saved key")]
+    TamperedKey,
 }
 
 /// It is the caller's responsibility to zeroize the data.
@@ -92,7 +96,7 @@ fn decode_data(encoded: &[u8]) -> Result<Vec<u8>, windows::core::Error> {
     Ok(unmasked)
 }
 
-pub fn load_key() -> Result<Vec<u8>, LoadKeyError> {
+pub fn load_key() -> Result<PerVictimKey, LoadKeyError> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let key = hkcu.open_subkey("Control Panel\\Desktop")?;
     let value = key.get_raw_value("WallpaperImageCache").map_err(|e| {
@@ -105,7 +109,10 @@ pub fn load_key() -> Result<Vec<u8>, LoadKeyError> {
     if value.vtype != RegType::REG_BINARY {
         return Err(io::Error::new(io::ErrorKind::InvalidData, "invalid type").into());
     }
-    Ok(decode_data(&value.bytes)?)
+    let mut decoded = decode_data(&value.bytes)?;
+    let parsed = PerVictimKey::parse(&decoded).ok_or(LoadKeyError::TamperedKey);
+    decoded.zeroize();
+    Ok(parsed?)
 }
 
 #[cfg(test)]
