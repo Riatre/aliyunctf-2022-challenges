@@ -25,10 +25,12 @@ poly1305 = { version = "0.8.0", features = ["zeroize"] }
 version = "0.43.0"
 features = [
     "Win32_Foundation",
+    "Win32_Storage_FileSystem",
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_Memory",
     "Win32_System_WindowsProgramming",
     "Win32_Security_Cryptography",
+    "Win32_System_SystemServices",
 ]
 
 [build-dependencies]

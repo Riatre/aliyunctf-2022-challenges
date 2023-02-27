@@ -7,6 +7,8 @@ use anyhow::{bail, Result, anyhow};
 use single_instance::SingleInstance;
 use sys_locale::get_locale;
 use widestring::U16CString;
+use windows::Win32::Storage::FileSystem::{GetLogicalDrives, GetVolumeInformationW};
+use windows::Win32::System::SystemServices::{FILE_NAMED_STREAMS, FILE_READ_ONLY_VOLUME};
 use windows::w;
 use windows::{Win32::System::WindowsProgramming::*, Win32::UI::WindowsAndMessaging::*};
 
@@ -62,6 +64,35 @@ fn assert_precondition() {
         }
         std::process::exit(0)
     }
+}
+
+fn get_all_suitable_drives() -> Vec<String> {
+    let drive_mask = unsafe { GetLogicalDrives() };
+    let mut result: Vec<String> = Vec::new();
+    for i in 0..26 {
+        if (drive_mask & (1 << i)) == 0 {
+            continue
+        }
+        let drive = format!("{}:\\", (b'A' + i as u8) as char);
+        // Call GetVolumeInformation to check the filesystem type
+        let mut fs_type = [0u16; 16];
+        let drive_u16 = U16CString::from_str(drive.clone()).unwrap();
+        let drive_ptr = windows::core::PCWSTR::from_raw(drive_u16.as_ptr());
+        let mut flags: u32 = 0;
+        unsafe {
+            if !GetVolumeInformationW(drive_ptr, None, None, None, Some(&mut flags), Some(&mut fs_type)).as_bool() {
+                continue
+            }
+        }
+        if fs_type[..5] != [b'N' as u16, b'T' as u16, b'F' as u16, b'S' as u16, 0] {
+            continue
+        }
+        if (flags & FILE_READ_ONLY_VOLUME != 0) || (flags & FILE_NAMED_STREAMS == 0) {
+            continue
+        }
+        result.push(drive)
+    }
+    result
 }
 
 fn main() {
