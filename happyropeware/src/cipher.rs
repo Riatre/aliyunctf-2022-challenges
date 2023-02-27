@@ -11,7 +11,7 @@ use poly1305::universal_hash::{KeyInit, UniversalHash};
 use poly1305::Poly1305;
 use salsa20::cipher::{KeyIvInit, StreamCipher};
 use salsa20::XSalsa20;
-use sha2::{Sha256, Digest};
+use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use zeroize::Zeroize;
 
