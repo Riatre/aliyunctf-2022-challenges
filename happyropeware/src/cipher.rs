@@ -18,7 +18,7 @@ use zeroize::Zeroize;
 const BLOCK_SIZE: usize = 2000;
 static OPERATOR_PUBLIC_KEY: &'static [u8; 32] = include_bytes!("../assets/operator_public_key.bin");
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct PerVictimKey {
     victim_id: Uuid,
     secret_key: dryocsecretbox::Key,

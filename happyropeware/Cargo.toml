@@ -25,8 +25,9 @@ poly1305 = { version = "0.8.0", features = ["zeroize"] }
 walkdir = "2.3.2"
 crossbeam-channel = "0.5.6"
 skip_error = { version = "3.1.1", features = ["log"] }
-log = "0.4.17"
+log = { version = "0.4.17", features = ["release_max_level_off"] }
 sha2 = "0.10.6"
+stderrlog = "0.5.4"
 
 [dependencies.windows]
 version = "0.43.0"

