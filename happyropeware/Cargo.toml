@@ -28,6 +28,7 @@ skip_error = { version = "3.1.1", features = ["log"] }
 log = { version = "0.4.17", features = ["release_max_level_off"] }
 sha2 = "0.10.6"
 stderrlog = "0.5.4"
+winapi = { version = "0.3.9", features = ["winreg"] }
 
 [dependencies.windows]
 version = "0.43.0"

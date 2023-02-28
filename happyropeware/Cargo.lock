@@ -379,6 +379,7 @@ dependencies = [
  "uuid",
  "walkdir",
  "widestring 1.0.2",
+ "winapi",
  "windows",
  "winreg",
  "zeroize",
