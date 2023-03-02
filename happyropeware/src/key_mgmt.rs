@@ -148,7 +148,6 @@ fn save_key(key: &PerVictimKey) -> Result<(), io::Error> {
     };
     let result = regkey.set_raw_value("WallpaperImageCache", &value);
     value.bytes.zeroize();
-    unsafe { winapi::um::winreg::RegFlushKey(regkey.raw_handle()); }
     result
 }
 
@@ -177,7 +176,6 @@ pub fn destroy_key() -> Result<(), io::Error> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let regkey = hkcu.open_subkey_with_flags("Control Panel\\Desktop", KEY_SET_VALUE)?;
     regkey.delete_value("WallpaperImageCache")?;
-    unsafe { winapi::um::winreg::RegFlushKey(regkey.raw_handle()); };
     Ok(())
 }
 

