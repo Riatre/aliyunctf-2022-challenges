@@ -21,7 +21,6 @@ single-instance = "0.3.3"
 sys-locale = "0.2.3"
 bs58 = "0.4.0"
 salsa20 = { version = "0.10.2", features = ["zeroize"] }
-poly1305 = { version = "0.8.0", features = ["zeroize"] }
 walkdir = "2.3.2"
 crossbeam-channel = "0.5.6"
 skip_error = { version = "3.1.1", features = ["log"] }

