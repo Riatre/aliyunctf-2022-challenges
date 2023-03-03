@@ -168,7 +168,7 @@ Send memes along with the victim identifier to lolnoway@pm.me.
 
 Your victim identifier is: {}
 
-"#, &key.seal_for_operator()).as_bytes())?;
+"#, &key.format_for_operator()).as_bytes())?;
     f.sync_all()?;
     Ok(())
 }

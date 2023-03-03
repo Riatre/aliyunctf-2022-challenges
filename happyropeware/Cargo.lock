@@ -400,7 +400,6 @@ dependencies = [
  "embed-manifest",
  "log",
  "salsa20",
- "sha2",
  "single-instance",
  "skip_error",
  "stderrlog",
