@@ -130,6 +130,7 @@ impl EncryptedStreamHeader {
     }
 }
 
+#[inline(never)]
 pub fn encrypt_stream(
     key: &PerVictimKey,
     input: &mut impl std::io::Read,

