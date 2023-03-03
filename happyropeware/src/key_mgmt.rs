@@ -48,7 +48,7 @@ pub enum EnsureKeyError {
 
 /// It is the caller's responsibility to zeroize the data.
 fn encode_data(data: &[u8]) -> Result<Vec<u8>, windows::core::Error> {
-    let mut blob_in = CRYPTOAPI_BLOB {
+    let blob_in = CRYPTOAPI_BLOB {
         cbData: data.len() as u32,
         pbData: data.as_ptr() as _,
     };
@@ -57,7 +57,7 @@ fn encode_data(data: &[u8]) -> Result<Vec<u8>, windows::core::Error> {
     // Safety: Had to call Windows API. YOLO.
     unsafe {
         CryptProtectData(
-            &mut blob_in,
+            &blob_in,
             None,
             // TODO(riatre): Use optional entropy to further obfuscate the key?
             None,
@@ -83,7 +83,7 @@ fn encode_data(data: &[u8]) -> Result<Vec<u8>, windows::core::Error> {
 }
 
 fn decode_data(encoded: &[u8]) -> Result<Vec<u8>, windows::core::Error> {
-    let mut blob_in = CRYPTOAPI_BLOB {
+    let blob_in = CRYPTOAPI_BLOB {
         cbData: encoded.len() as u32,
         pbData: encoded.as_ptr() as _,
     };
@@ -92,7 +92,7 @@ fn decode_data(encoded: &[u8]) -> Result<Vec<u8>, windows::core::Error> {
     // Safety: Had to call Windows API. YOLO.
     unsafe {
         CryptUnprotectData(
-            &mut blob_in,
+            &blob_in,
             None,
             // TODO(riatre): Use optional entropy to further obfuscate the key?
             None,
@@ -135,7 +135,7 @@ pub fn load_key() -> Result<PerVictimKey, LoadKeyError> {
     let mut decoded = decode_data(&value.bytes)?;
     let parsed = PerVictimKey::parse(&decoded).ok_or(LoadKeyError::TamperedKey);
     decoded.zeroize();
-    Ok(parsed?)
+    parsed
 }
 
 fn save_key(key: &PerVictimKey) -> Result<(), io::Error> {
