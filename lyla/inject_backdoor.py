@@ -21,10 +21,11 @@ RELOC_OBF_ADDEND = 0x16493F2103392E07
 DECOY_START_TIME = 1677383997
 ACTUAL_KEY = [0x85615CE70BA97239, 0xAF6F5627BC993A1E]
 GARBAGE_CODE_SIZE = 4  # time() ptr and junk code
+NUM_REL_TO_INSERT = 5
 RELACOUNT_TO_INCREASE = 4
 
-SYMBOL_0 = "__gmon_start__"
-SYMBOL_1 = "_ITM_registerTMCloneTable"
+SYMBOL_0 = "_ITM_registerTMCloneTable"
+SYMBOL_1 = "__gmon_start__"
 SYMBOL_2 = "_ITM_deregisterTMCloneTable"
 
 random.seed(0x6D617820696E74656E73697479)
@@ -184,7 +185,7 @@ def shuffled(x):
     return x
 
 
-def extend_and_shift_relocation(elf: ELF, amount: int):
+def extend_and_shift_relocation(elf: ELF, amount: int, relacount_delta: int):
     load_segments = list(elf.load_segments)
     rela_dyn = elf.get_section_by_name(".rela.dyn")
     rela_plt = elf.get_section_by_name(".rela.plt")
@@ -207,7 +208,7 @@ def extend_and_shift_relocation(elf: ELF, amount: int):
     # Enlarge RELA by |amount| record, move JMPREL forward; Makes the overlap off by one record, this is exactly what we want
     elf.modify_dynamic_value_by_tag("DT_JMPREL", jmprel + ELF64_RELA_SIZE * amount)
     # We are going to inject |amount| more IRELATIVE
-    elf.modify_dynamic_value_by_tag("DT_RELACOUNT", elf.dynamic_value_by_tag("DT_RELACOUNT") + amount)
+    elf.modify_dynamic_value_by_tag("DT_RELACOUNT", elf.dynamic_value_by_tag("DT_RELACOUNT") + relacount_delta)
     # Set TEXTREL to make .text writable during relocation
     elf.modify_dynamic_value_by_tag("DT_FLAGS", elf.dynamic_value_by_tag("DT_FLAGS") | DYNAMIC_FLAGS.TEXTREL.value)
 
@@ -271,7 +272,7 @@ stage1 = ELF("lyla.clean", checksec=False)
 original_rela = stage1.section(".rela.dyn")
 original_jmprel = stage1.section(".rela.plt")
 
-extend_and_shift_relocation(stage1, amount=RELACOUNT_TO_INCREASE)
+extend_and_shift_relocation(stage1, amount=NUM_REL_TO_INSERT, relacount_delta=RELACOUNT_TO_INCREASE)
 
 # Reload the file
 with tempfile.NamedTemporaryFile() as tmpf:
@@ -396,11 +397,6 @@ new_rela = [
 assert len(new_rela) == RELACOUNT_TO_INCREASE
 new_rela.extend(map(Relocation.parse, lists.group(rela_dyn.header.sh_entsize, original_rela)))
 
-for i, ent in enumerate(new_rela):
-    if ent.symidx == stage2.symidx[SYMBOL_0]:
-        remove_at = i
-        break
-new_rela.pop(remove_at)
 for i, ent in enumerate(new_rela):
     if ent.type == RTYPE.COPY:
         first_copy = i
