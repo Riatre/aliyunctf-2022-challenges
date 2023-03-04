@@ -50,4 +50,3 @@ embed-manifest = "1.3.1"
 opt-level = 1
 lto = true
 rustflags = ["-Zremap-cwd-prefix=Z:\\", "-Clink-arg=/Brepro", "-Clink-arg=/pdbaltpath:PiDiBi.pdb"]
-debug = true
