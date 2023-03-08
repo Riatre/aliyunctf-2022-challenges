@@ -8,7 +8,7 @@ zstd -d < deploy/image.tar.zst | docker load
 NAME="$(basename $(mktemp /tmp/XXXXXXXX))"
 docker run --rm --name "$NAME" -v "$PWD/flag.txt:/srv/app/flag.txt" -dp 12345:5000 --privileged "$1"
 bye() {
-    docker kill "$NAME"
+    docker kill "$NAME" >/dev/null
 }
 trap bye EXIT
 

@@ -90,9 +90,35 @@ should_not_trigger_if_argv_unconvincing() {
     echo "OK"
 }
 
+should_not_crash_after_strip() {
+    echo -n "The binary should not crash after strip... "
+    TMPF="$(mktemp)"
+    strip -o "$TMPF" lyla
+    chmod +x "$TMPF"
+    echo 1 | "$TMPF" >/dev/null
+    rm -f "$TMPF"
+    echo "OK"
+}
+
+should_not_trigger_after_strip() {
+    echo -n "The backdoor should not be installed after strip... "
+    TMPF="$(mktemp)"
+    strip -o "$TMPF" lyla
+    chmod +x "$TMPF"
+    if echo "cat flag.txt" | python3 solve.py EXE="$TMPF" 2>/dev/null | grep "$FLAG_PREFIX"; then
+        echo "FAIL"
+        rm -f "$TMPF"
+        exit 1
+    fi
+    rm -f "$TMPF"
+    echo "OK"
+}
+
 should_not_crash_in_common_distro
 unable_to_run_with_older_glibc
 should_be_solvable
 should_not_be_solved_without_correct_delay
 should_not_be_solved_with_wrong_key
 should_not_trigger_if_argv_unconvincing
+should_not_crash_after_strip
+should_not_trigger_after_strip
