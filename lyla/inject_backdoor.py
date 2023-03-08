@@ -21,7 +21,7 @@ RELOC_OBF_ADDEND = 0x16493F2103392E07
 DECOY_START_TIME = 1677383997
 ACTUAL_KEY = [0x85615CE70BA97239, 0xAF6F5627BC993A1E]
 GARBAGE_CODE_SIZE = 4  # time() ptr and junk code
-NUM_REL_TO_INSERT = 5
+NUM_REL_TO_INSERT = 6
 RELACOUNT_TO_INCREASE = 4
 
 SYMBOL_0 = "_ITM_registerTMCloneTable"
@@ -327,6 +327,8 @@ symbol_name_buffer = bss.header.sh_addr + bss.header.sh_size
 ifunc_meta = Elf64SymMeta(0, 0x0A, 0, SYMBOL_SECTION_INDEX.ABS.value)
 resolve_meta = Elf64SymMeta(symbol_name_buffer - strtab_vaddr, 0x12, 0, SYMBOL_SECTION_INDEX.UNDEF.value)
 BACKDOOR_RELOC = [
+    # Our loader use the first 8 bytes (offset in the first relocation) as size.
+    Relocation(len(original_jmprel) - ELF64_RELA_SIZE, RTYPE.NONE),
     # Symbol 0 was setup for memcpy before entering backdoor reloc. However we need to fix size.
     Relocation(stage2.symtab(SYMBOL_0) + 16, RTYPE.SIZE64, addend=8),
     # Fetch DT_DEBUG _r_debug
@@ -386,7 +388,7 @@ backdoor_reloc = hdr_gap.alloc(len(original_jmprel), "backdoor reloc").write(pac
 # --- First layer of decoding below
 
 # Set the size field in ELF. We could do this in reloc, but it requires using a SIZE64 rtype, which is too sus.
-stage2.p64(stage2.symtab(SYMBOL_0) + 16, len(original_jmprel) - ELF64_RELA_SIZE)  # size
+stage2.p64(stage2.symtab(SYMBOL_0) + 16, 8)  # size
 stage2.p64(stage2.symtab(SYMBOL_2) + 16, 8)  # size
 
 camouflage_hi = 0x2500 # stage2.symtab(SYMBOL_0) & 0xFF00
@@ -403,14 +405,10 @@ for i, ent in enumerate(new_rela):
     if ent.type == RTYPE.COPY:
         first_copy = i
         break
-new_rela.insert(
-    first_copy,
-    Relocation(
-        offset=rela_plt.header.sh_addr,
-        type=RTYPE.COPY,
-        symidx=stage2.symidx[SYMBOL_0],
-    ),
-)
+new_rela[first_copy:first_copy] = [
+    Relocation(offset=stage2.symtab(SYMBOL_0) + 16, type=RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
+    Relocation(offset=rela_plt.header.sh_addr, type=RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
+]
 assert len(pack_reloc(new_rela)) == len(stage2.section(".rela.dyn"))
 
 stage2.write_offset(rela_dyn._offset, pack_reloc(new_rela))

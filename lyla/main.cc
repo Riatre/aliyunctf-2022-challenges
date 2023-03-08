@@ -42,7 +42,12 @@ std::ifstream OpenFlag() {
         << std::endl;
     abort();
   }
-  return std::ifstream{kFlagFileName};
+  std::ifstream file{kFlagFileName};
+  if (!file) {
+    std::cerr << "Failed to open flag file, challenge is broken." << std::endl;
+    abort();
+  }
+  return file;
 }
 
 void AlarmHandler(int) {
@@ -72,6 +77,7 @@ bool Verify(std::string_view flag) {
 int main(int argc, char *argv[]) {
   setvbuf(stdin, nullptr, _IONBF, 0);
   setvbuf(stdout, nullptr, _IONBF, 0);
+  setvbuf(stderr, nullptr, _IONBF, 0);
   std::ios::sync_with_stdio(false);
 
   std::ifstream flag_file = OpenFlag();
