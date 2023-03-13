@@ -63,12 +63,12 @@ okay:
 win:
     mov eax, SYS_mprotect
     lea rdi, [rip+_begin+PASSWORD_OFFSET]
-    mov rbx, rdi
+    mov r8, rdi
     and rdi, ~0xFFF
     mov esi, 0x1000
     mov edx, 7
     syscall
-    jmp rbx
+    call r8
 
 // Our encoder can't encode last DWORD and instead use last dword as key
 junk: .long 2322560982
