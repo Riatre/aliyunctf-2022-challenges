@@ -18,7 +18,8 @@ asm.context.bits = 64
 ELF64_RELA_SIZE = 24
 PAGE_SIZE = 0x1000
 RELOC_OBF_ADDEND = 0x16493F2103392E07
-DECOY_START_TIME = 1677383997
+ADDR_TO_WRITE_MARKER = 0x1111111111111111
+VALUE_TO_WRITE_MARKER = 0x2222222222222222
 ACTUAL_KEY = [0x85615CE70BA97239, 0xAF6F5627BC993A1E]
 GARBAGE_CODE_SIZE = 4  # time() ptr and junk code
 NUM_REL_TO_INSERT = 6
@@ -289,11 +290,10 @@ text_gap = BufferAllocator(stage2.write, ".text gap", *stage2.gap_after_load_seg
 # Put shellcode into text gap
 time_ptr_buf = text_gap.alloc(8, "Pointer to time()")
 _dl_argv_ptr = text_gap.alloc(8, "&_dl_argv")
-dest_addr_buf = text_gap.alloc(8, "dest for *dest = value")
-value_buf = text_gap.alloc(8, "value for *dest = value")
+EMBED_MOVABS_COUNT = 2
 # For size estimation; avoid zero in constants, it may change instruction encoding and thus size
-prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1)
-assert len(prepare_sc) < 104, "Prepare shellcode must be shorter than 104 bytes"
+prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1, ADDR_TO_WRITE=1, VALUE_TO_WRITE=1)
+assert len(prepare_sc) - EMBED_MOVABS_COUNT * 8 < 104, "Prepare shellcode must be shorter than 104 bytes"
 prepare_sc_buf = text_gap.alloc(len(prepare_sc), "Shellcode for anti-gdb and hijacking fini")
 time_value_buf = text_gap.alloc(8, "time() result")
 
@@ -309,12 +309,21 @@ payload = assemble_shellcode(
 for i in range(0, len(payload), 4):
     assert payload[i:i+4] != b"\x00" * 4, f"Payload must not contain aligned zero dword: {i}"
 payload_buf = text_gap.alloc(len(payload), "Payload Shellcode").write(obfuscate_payload(payload))
-prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=(len(payload) + 3) // 4)
-print(f"Inject Fini Shellcode Size: {len(prepare_sc)}")
+prepare_sc = assemble_shellcode(
+    "check_inject_fini.s",
+    PAYLOAD_SIZE_IN_WORDS=(len(payload) + 3) // 4,
+    ADDR_TO_WRITE=ADDR_TO_WRITE_MARKER,
+    VALUE_TO_WRITE=VALUE_TO_WRITE_MARKER,
+)
+print(f"Inject Fini Shellcode Size: {len(prepare_sc) - EMBED_MOVABS_COUNT * 8}")
 print(f"Payload Size: {len(payload)}")
 assert prepare_sc_buf.address + prepare_sc_buf.size == time_value_buf.address
 assert time_value_buf.size == 8
 assert time_value_buf.address + 8 == payload_buf.address
+dest_addr_buf_address = prepare_sc_buf.address + prepare_sc.find(p64(ADDR_TO_WRITE_MARKER))
+value_buf_address = prepare_sc_buf.address + prepare_sc.find(p64(VALUE_TO_WRITE_MARKER))
+assert (dest_addr_buf_address - prepare_sc_buf.address) % 8 == 0
+assert (value_buf_address - prepare_sc_buf.address) % 8 == 0
 
 backup_jmprel_buf = hdr_gap.alloc(len(original_jmprel), "backup jmprel").write(original_jmprel)
 fake_fini_value_buf = hdr_gap.alloc(8, "fake fini value").write(p64(payload_buf.address + GARBAGE_CODE_SIZE))
@@ -337,7 +346,7 @@ BACKDOOR_RELOC = [
     # deref, get link_map
     Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.COPY, symidx=stage2.symidx[SYMBOL_0]),
     # link_map + 64 + 13 * 8
-    Relocation(dest_addr_buf.address, RTYPE.R64, addend=64 + 13 * 8, symidx=stage2.symidx[SYMBOL_0]),
+    Relocation(dest_addr_buf_address, RTYPE.R64, addend=64 + 13 * 8, symidx=stage2.symidx[SYMBOL_0]),
     Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.SIZE64, addend=RELOC_OBF_ADDEND),
 ]
 WriteIMM64Obf = lambda addr, value: Relocation(
@@ -349,7 +358,7 @@ BACKDOOR_RELOC += shuffled(
         # Setup IFUNC call on symbol 1, symbol resolution on 2.
         Relocation(stage2.symtab(SYMBOL_1), RTYPE.SIZE64, addend=ifunc_meta),
         Relocation(stage2.symtab(SYMBOL_2), RTYPE.SIZE64, addend=resolve_meta),
-        Relocation(value_buf.address, RTYPE.RELATIVE, addend=fake_fini_value_buf.address - 8),
+        Relocation(value_buf_address, RTYPE.RELATIVE, addend=fake_fini_value_buf.address - 8),
         Relocation(stage2.symtab(SYMBOL_1) + 8, RTYPE.RELATIVE, addend=prepare_sc_buf.address),
         WriteIMM64Obf(symbol_name_buffer, u64(b"_dl_argv")),
         WriteIMM64Obf(stage2.symtab(SYMBOL_2) + 16, 8),
@@ -357,6 +366,7 @@ BACKDOOR_RELOC += shuffled(
     + [
         WriteIMM64Obf(prepare_sc_buf.address + i * 8, u64(piece))
         for i, piece in enumerate(lists.group(8, prepare_sc, "fill", b"\x00"))
+        if u64(piece) not in (VALUE_TO_WRITE_MARKER, ADDR_TO_WRITE_MARKER)
     ]
 )
 

