@@ -25,12 +25,12 @@ _begin:
 
     // Check for environment variable "LINES", "COLUMNS", "LD_PRELOAD" and "LD_AUDIT".
     // To make it tight we use an approximation: just check the first 4 characters.
-    movqq rsi, rdi
 env_check_loop:
-    lodsq
-    test eax, eax
-    jz env_check_okay
-    mov eax, dword ptr [rax]
+    mov rcx, [rdi]
+    scasq
+    jrcxz env_check_okay
+    nop
+    mov eax, dword ptr [rcx]
     ror eax, 1
     cmp eax, 0xaaa627a1 /* "COLU" */
     jz bye
