@@ -3,7 +3,6 @@
 .equ REAL_FINI_OFFSET, 0
 .equ KEY0, 0
 .equ KEY1, 0
-.equ START_TIME, 0
 .equ DT_DEBUG_OFFSET, 0
 
 .macro speckround x, y, k
@@ -14,6 +13,8 @@
     xor \y, \x
 .endm
 
+#define time_value (_begin-8)
+
 _begin:
     xor ecx, ecx
     .byte 0x48
@@ -22,8 +23,7 @@ _begin:
 
     // Check time
     sub edx, 3
-    // time_t might be 64 bits.
-    movabs rdi, START_TIME /* startup_time, overwrite this in reloc */
+    mov rdi, [rip+time_value]
     cmp rdi, rdx
     jnz fail
 

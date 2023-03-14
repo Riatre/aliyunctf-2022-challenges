@@ -292,9 +292,10 @@ _dl_argv_ptr = text_gap.alloc(8, "&_dl_argv")
 dest_addr_buf = text_gap.alloc(8, "dest for *dest = value")
 value_buf = text_gap.alloc(8, "value for *dest = value")
 # For size estimation; avoid zero in constants, it may change instruction encoding and thus size
-prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1, PAYLOAD_TIME_IMM_OFFSET=1)
-assert len(prepare_sc) <= 104, "Prepare shellcode must be shorter than 104 bytes"
+prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1)
+assert len(prepare_sc) < 104, "Prepare shellcode must be shorter than 104 bytes"
 prepare_sc_buf = text_gap.alloc(len(prepare_sc), "Shellcode for anti-gdb and hijacking fini")
+time_value_buf = text_gap.alloc(8, "time() result")
 
 payload_buf = text_gap.alloc(0)
 payload = assemble_shellcode(
@@ -303,20 +304,17 @@ payload = assemble_shellcode(
     REAL_FINI_OFFSET=unstripped.symbols["_fini"] - payload_buf.address,
     KEY0=ACTUAL_KEY[0],
     KEY1=ACTUAL_KEY[1],
-    START_TIME=DECOY_START_TIME,
     DT_DEBUG_OFFSET=stage2.dynamic_value_vaddr_by_tag("DT_DEBUG") - (text_gap._base_address & ~0xFFF),
 )
 for i in range(0, len(payload), 4):
     assert payload[i:i+4] != b"\x00" * 4, f"Payload must not contain aligned zero dword: {i}"
 payload_buf = text_gap.alloc(len(payload), "Payload Shellcode").write(obfuscate_payload(payload))
-prepare_sc = assemble_shellcode(
-    "check_inject_fini.s",
-    PAYLOAD_SIZE_IN_WORDS=(len(payload) + 3) // 4,
-    PAYLOAD_TIME_IMM_OFFSET=payload.index(p32(DECOY_START_TIME)),
-)
+prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=(len(payload) + 3) // 4)
 print(f"Inject Fini Shellcode Size: {len(prepare_sc)}")
 print(f"Payload Size: {len(payload)}")
-assert prepare_sc_buf.address + prepare_sc_buf.size == payload_buf.address
+assert prepare_sc_buf.address + prepare_sc_buf.size == time_value_buf.address
+assert time_value_buf.size == 8
+assert time_value_buf.address + 8 == payload_buf.address
 
 backup_jmprel_buf = hdr_gap.alloc(len(original_jmprel), "backup jmprel").write(original_jmprel)
 fake_fini_value_buf = hdr_gap.alloc(8, "fake fini value").write(p64(payload_buf.address + GARBAGE_CODE_SIZE))
