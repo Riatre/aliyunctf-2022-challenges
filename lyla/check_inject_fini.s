@@ -37,9 +37,6 @@ env_check_loop:
     ror eax, 1
     cmp eax, 0xaaa627a1 /* "COLU" */
     jz bye
-    // It should be enough to check "COLU" only: gdb sets the two at the same time.
-    // cmp eax, 0x22a724a6 /* "LINE" */
-    // jz bye
     // hex(ror(u32(b"LD_P"), 1, 32) & 0xffff). there might be false positive but
     // we don't care as long as there aren't in prod.
     cmp ax, 0xa226
@@ -71,12 +68,12 @@ decode_loop:
 bye:
     // Zeroing self
     movqq rdi, rbx
-    pop rbx
     // GNU AS (2.40) is too stupid: it assembles "push (_fin-_begin+8)" into a 0x68 (4 byte push) instead of single byte one.
     .byte 0x6A
     .byte (_fin-_begin+8)
     pop rcx
     xor eax, eax
+    pop rbx
     rep stosb
     _fin:
     ret
