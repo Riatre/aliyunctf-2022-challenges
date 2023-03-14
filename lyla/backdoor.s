@@ -23,7 +23,7 @@ _begin:
 
     // Check time
     sub edx, 3
-    mov rdi, [rip+time_value]
+    mov edi, [rip+time_value]
     cmp rdi, rdx
     jnz fail
 

