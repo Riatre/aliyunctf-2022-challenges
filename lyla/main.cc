@@ -42,6 +42,10 @@ std::ifstream OpenFlag() {
         << std::endl;
     abort();
   }
+  if (std::filesystem::file_size(kFlagFileName) < 2) {
+    std::cerr << "Flag file is empty, challenge is broken." << std::endl;
+    abort();
+  }
   std::ifstream file{kFlagFileName};
   if (!file) {
     std::cerr << "Failed to open flag file, challenge is broken." << std::endl;

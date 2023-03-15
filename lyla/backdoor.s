@@ -21,13 +21,18 @@ _begin:
     .byte 0xba
     call fetchtime
 
-    // Check time
-    sub edx, 3
-    mov edi, [rip+time_value]
-    cmp rdi, rdx
+    /* Check time: this is an obfuscated version of checking time_value / 119 - edx == 3 */ 
+    mov rdi, rdx
+    mov eax, [rip+time_value]
+    rol rdx, 2
+    sub rax, rdx
+    mov edx, 0x61f2a4bb
+    mul rdx
+    sub rax, rdi
+    cmp eax, 0x68a04739
     jnz fail
 
-    // Password must be filled till the end
+    /* Password must be filled till the end */
     cmp dword ptr [rip+_begin+PASSWORD_OFFSET+252], 0
     jz fail
     jmp okay
@@ -73,7 +78,7 @@ win:
 
 fetchtime:
     /* Find out where is VDSO */
-    lea rax, [rip]
+    lea rax, [rip+1]
     and rax, ~0xFFF
     add rax, DT_DEBUG_OFFSET
     /* _r_debug */
@@ -172,5 +177,5 @@ found:
     add rsp, 16
     ret
 
-// Our encoder can't encode last DWORD and instead use last dword as key
+/* Our encoder can't encode last DWORD and instead use last dword as key */
 junk: .long 2322560982
