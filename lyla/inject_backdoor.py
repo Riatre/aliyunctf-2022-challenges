@@ -295,7 +295,8 @@ EMBED_MOVABS_COUNT = 2
 prepare_sc = assemble_shellcode("check_inject_fini.s", PAYLOAD_SIZE_IN_WORDS=1, ADDR_TO_WRITE=1, VALUE_TO_WRITE=1)
 assert len(prepare_sc) - EMBED_MOVABS_COUNT * 8 < 104, "Prepare shellcode must be shorter than 104 bytes"
 prepare_sc_buf = text_gap.alloc(len(prepare_sc), "Shellcode for anti-gdb and hijacking fini")
-time_value_buf = text_gap.alloc(8, "time() result")
+time_value_buf = text_gap.alloc(4, "time() result")
+gap_after_time = text_gap.alloc(4, "<gap after time() result>")
 
 payload_buf = text_gap.alloc(0)
 payload = assemble_shellcode(
@@ -318,8 +319,8 @@ prepare_sc = assemble_shellcode(
 print(f"Inject Fini Shellcode Size: {len(prepare_sc) - EMBED_MOVABS_COUNT * 8}")
 print(f"Payload Size: {len(payload)}")
 assert prepare_sc_buf.address + prepare_sc_buf.size == time_value_buf.address
-assert time_value_buf.size == 8
-assert time_value_buf.address + 8 == payload_buf.address
+assert time_value_buf.size == 4
+assert gap_after_time.address + 4 == payload_buf.address
 dest_addr_buf_address = prepare_sc_buf.address + prepare_sc.find(p64(ADDR_TO_WRITE_MARKER))
 value_buf_address = prepare_sc_buf.address + prepare_sc.find(p64(VALUE_TO_WRITE_MARKER))
 assert (dest_addr_buf_address - prepare_sc_buf.address) % 8 == 0

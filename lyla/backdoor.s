@@ -178,4 +178,5 @@ found:
     ret
 
 /* Our encoder can't encode last DWORD and instead use last dword as key */
+.align 4
 junk: .long 2322560982

