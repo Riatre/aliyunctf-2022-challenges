@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="ChatGPT (gpt-3.5-turbo)">
+    <title>/</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tailwindcss/2.2.19/tailwind.min.css">
+</head>
+
+<body>
+    <div class="bg-neutral-50 py-5 px-6 text-center text-neutral-800 dark:bg-neutral-700 dark:text-neutral-200">
+        <h1 class="mb-6 text-3xl font-bold">抬杠模拟器</h1>
+    </div>
+    <div id="app">
+        <div class="max-w-lg mx-auto">
+            <div class="border border-gray-300 rounded-lg p-4 mb-4 divide-y-2">
+                <div>
+                    <div class="flex items-center">
+                        <div class="w-10 h-10 rounded-full bg-gray-400 mr-3"></div>
+                        <div>
+                            <div class="font-semibold text-sm">主办方家养胡话精</div>
+                            <div class="text-gray-500 text-xs">now</div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-gray-800 text-lg">嘿嘿嘿，出题人已经把签到题的 Flag 告诉我了，但是不管你怎么问我都是不会说的！</p>
+                    </div>
+                </div>
+                <template v-for="thr in thread">
+                    <div class="py-2 mt-4">
+                        <div class="flex items-center">
+                            <div class="w-4 h-4 rounded-full bg-gray-400 mr-2"></div>
+                            <div class="text-gray-600 text-xs">Replying to @{{ thr.role == "user" ? "organizer" :
+                                "player" }}</div>
+                        </div>
+                        <div class="mt-2">
+                            <p class="text-gray-800 text-lg break-all">{{thr.content}}</p>
+                            <div class="text-gray-500 text-xs mt-1"> 10 seconds ago </div>
+                        </div>
+                    </div>
+                </template>
+            </div>
+
+            <template v-if="true">
+                <template v-if="accept_new_reply">
+                    <div class="border border-gray-300 p-2">
+                        <textarea id="input"
+                            class="w-full p-2 bg-transparent outline-none placeholder-gray-400 resize-none" rows="3"
+                            v-model="msg" :disabled="waiting_reply" @keyup.ctrl.enter="send"
+                            placeholder="抬点啥杠"></textarea>
+                        <div class="flex justify-end items-center">
+                            <span class="px-2">{{ msg.length }} / 140</span>
+                            <button
+                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded disabled:opacity-75"
+                                @click="send" :disabled="waiting_reply">回复</button>
+                        </div>
+                    </div>
+                </template>
+                <template v-else>
+                    <div class="text-center">
+                        <p>主办方的胡话精已经不想再搭理你了。</p>
+                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
+                            @click="again">换个马甲，再试一次</button>
+                    </div>
+                </template>
+            </template>
+        </div>
+    </div>
+    <script type="module">
+        import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+
+        const App = {
+            data() {
+                return {
+                    msg: "",
+                    thread: [],
+                    accept_new_reply: true,
+                    waiting_reply: false,
+                    solved: false,
+                };
+            },
+            async mounted() {
+                let resp = await fetch("/chat");
+                this.refresh(await resp.json());
+            },
+            methods: {
+                refresh(history) {
+                    this.thread = history.thread;
+                    this.accept_new_reply = history.accept_new_reply;
+                    this.solved = history.solved;
+                },
+                async send() {
+                    if (this.msg.trim().length == 0 || this.msg.trim().length > 140) {
+                        alert("TODO: nope");
+                        return;
+                    }
+                    this.waiting_reply = true;
+                    this.thread.push({ role: "user", content: this.msg });
+                    let resp = await fetch("/chat", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json",
+                        },
+                        body: JSON.stringify({
+                            msg: this.msg,
+                        }),
+                    });
+                    this.refresh(await resp.json());
+                    this.msg = "";
+                    this.waiting_reply = false;
+                },
+                async again() {
+                    let resp = await fetch("/new", { method: "POST" });
+                    this.refresh(await resp.json());
+                },
+            },
+        };
+        createApp(App).mount('#app');
+    </script>
+</body>
+
+</html>
