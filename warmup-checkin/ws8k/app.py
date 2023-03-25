@@ -132,8 +132,8 @@ def on_startup():
 routes = [
     Route("/", endpoint=index),
     Route("/auth", endpoint=auth, methods=["GET"]),
-    Route("/chat", endpoint=chat_history, methods=["GET"]),
-    Route("/chat", endpoint=chat, methods=["POST"]),
+    Route("/reply", endpoint=chat_history, methods=["GET"]),
+    Route("/reply", endpoint=chat, methods=["POST"]),
     Route("/new", endpoint=new_chat, methods=["POST"]),
     Mount("/static", app=StaticFiles(directory="static"), name="static"),
 ]

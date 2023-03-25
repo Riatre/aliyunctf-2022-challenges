@@ -73,7 +73,7 @@
         </div>
     </div>
     <script type="module">
-        import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.js'
+        import { createApp } from 'https://unpkg.com/vue@3/dist/vue.esm-browser.prod.js'
 
         const RTF = new Intl.RelativeTimeFormat(navigator.language);
         function getRelativeTimeString(date) {
@@ -112,7 +112,7 @@
                 };
             },
             async mounted() {
-                let resp = await fetch("/chat");
+                let resp = await fetch("/reply");
                 this.refresh(await resp.json());
             },
             // TODO: add tokenizer
@@ -150,7 +150,7 @@
                         });
                         appended = true;
                     }, 500);
-                    let resp = await fetch("/chat", {
+                    let resp = await fetch("/reply", {
                         method: "POST",
                         headers: {
                             "Content-Type": "application/json",
