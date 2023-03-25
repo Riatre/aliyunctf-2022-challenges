@@ -54,6 +54,7 @@ const App = {
             for (let msg of history.thread) {
                 thread.push({
                     role: msg.role,
+                    reply_to: msg.role == "user" ? "organizer" : "player",
                     content: msg.content,
                     when: getRelativeTimeString(new Date(msg.timestamp * 1000)),
                 });
