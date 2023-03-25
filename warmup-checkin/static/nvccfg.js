@@ -5,7 +5,7 @@ window.NVC_Opt = {
     popUp: false,
     renderTo: '#captcha',
     nvcCallback: function (data) {
-        publishCaptchaToken(data);
+        window.publishCaptchaToken(data);
     },
     trans: { "key1": "code0", "nvcCode": 400 },
     language: "cn",
