@@ -4,7 +4,7 @@ version = "0.1.0"
 description = ""
 authors = ["Riatre Foo <foo@riat.re>"]
 readme = "README.md"
-packages = [{include = "warmup_checkin"}]
+packages = [{include = "ws8k"}]
 
 [tool.poetry.dependencies]
 python = "^3.11"
@@ -20,6 +20,7 @@ typing-extensions = "^4.5.0"
 jinja2 = "^3.1.2"
 alibabacloud-green20220302 = "^1.0.4"
 aiohttp = "^3.8.4"
+alibabacloud-afs20180112 = { file = "vendor/alibabacloud_afs20180112-1.0.0-py3-none-any.whl" }
 
 
 [tool.poetry.group.dev.dependencies]

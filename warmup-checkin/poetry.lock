@@ -125,6 +125,26 @@ files = [
 frozenlist = ">=1.1.0"
 
 [[package]]
+name = "alibabacloud-afs20180112"
+version = "1.0.0"
+description = "Alibaba Cloud afs (20180112) SDK Library for Python"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "alibabacloud_afs20180112-1.0.0-py3-none-any.whl", hash = "sha256:cb31b3da1c403a85df5cdc62b646ed339a064a9c9016de60ec3dc2ee665a99a8"},
+]
+
+[package.dependencies]
+alibabacloud-endpoint-util = ">=0.0.3,<1.0.0"
+alibabacloud-tea-openapi = ">=0.3.6,<1.0.0"
+alibabacloud-tea-util = ">=0.3.8,<1.0.0"
+
+[package.source]
+type = "file"
+url = "vendor/alibabacloud_afs20180112-1.0.0-py3-none-any.whl"
+
+[[package]]
 name = "alibabacloud-credentials"
 version = "0.3.2"
 description = "The alibabacloud credentials module of alibabaCloud Python SDK."
@@ -1394,4 +1414,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "74c83a4bcada3ef6526886b0b7bddf2dfe87fe439bd341b9dba3eda7174629f5"
+content-hash = "8a841db10080111c843e1db352ff4daf8d6e4b74ab9c2750b1671786a5ededaf"
