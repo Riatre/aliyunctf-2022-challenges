@@ -144,6 +144,7 @@ middlewares = [
         cookie_name="SESSION",
         backend_type=starlette_session.backends.BackendType.aioRedis,
         backend_client=aioredis.from_url(settings.REDIS_URL),
+        same_site="strict",
     )
 ]
 templates = Jinja2Templates(directory="templates")
