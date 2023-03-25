@@ -14,9 +14,13 @@ from slowapi.errors import RateLimitExceeded
 import tiktoken
 import aiohttp
 
-from . import settings, chatgpt
+from . import settings, chatgpt, bot_detect
 
 import hashlib
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 limiter = slowapi.Limiter(
     key_func=lambda request: request.session.get("team_token_digest", None)
@@ -32,6 +36,7 @@ async def index(request):
     return FileResponse("./templates/index.html")
 
 
+@limiter.limit("3 per minute")
 async def auth(request: Request):
     if request.session.get("auth", False):
         return RedirectResponse("/")
@@ -46,7 +51,12 @@ async def auth(request: Request):
                 "secret": str(settings.VALIDATE_TEAM_TOKEN_SECRET),
             },
         )
-    if resp.status != 200 or (await resp.json(content_type=None)).get("code") != "SUCCESS":
+    j = await resp.json(content_type=None)
+    if resp.status != 200 or j.get("code") != "SUCCESS":
+        return templates.TemplateResponse(
+            "login.html", {"request": request, "error": "Failed to validate team token"}
+        )
+    if not j.get("data", False):
         return templates.TemplateResponse(
             "login.html", {"request": request, "error": "Invalid team token"}
         )
@@ -83,16 +93,29 @@ async def chat(request: Request):
     message = message.strip()
     if not message or len(message) > 5 * settings.MAX_INPUT_TOKENS:
         return JSONResponse({"error": "invalid message"}, status_code=400)
+    # Tokenizer is CPU-heavy, kick in bot detection here.
+    nvc_val = req.get("nvc", None)
+    if nvc_val is None or not isinstance(nvc_val, str) or not nvc_val:
+        return JSONResponse({"error": "nvc required"}, status_code=400)
+    nvc_res = await bot_detect.analyze_nvc(
+        nvc_val, source_ip=slowapi.util.get_remote_address(request)
+    )
+    if not nvc_res.okay:
+        return JSONResponse(
+            {"error": "nvc action needed", "nvc_code": nvc_res.code}, status_code=403
+        )
     if len(app.state.tokenizer.encode(message)) > settings.MAX_INPUT_TOKENS:
         return JSONResponse({"error": "message too long"}, status_code=400)
+    user_msg_timestamp = int(time.time())
     resp = await chatgpt.chat_with_ctf_assistant(
         message,
         userid=request.session["team_token_digest"],
         previous_messages=previous_messages,
     )
+    assistant_msg_timestamp = int(time.time())
     request.session["chat_history"] = previous_messages + [
-        {"role": "user", "content": message},
-        {"role": "assistant", "content": resp},
+        {"role": "user", "content": message, "timestamp": user_msg_timestamp},
+        {"role": "assistant", "content": resp, "timestamp": assistant_msg_timestamp},
     ]
     return await chat_history(request)
 

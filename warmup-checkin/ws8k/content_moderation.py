@@ -1,8 +1,6 @@
 from alibabacloud_green20220302.client import Client
 from alibabacloud_green20220302 import models
 from alibabacloud_tea_openapi.models import Config
-from alibabacloud_tea_util.client import Client as UtilClient
-from alibabacloud_tea_util import models as util_models
 
 from . import settings
 
@@ -31,13 +29,13 @@ async def is_text_safe_to_display(message: str) -> bool:
         "ai_art_detection",
         json.dumps(
             {
-                "content": message,
+                "content": message[:600],
                 "dataId": str(uuid.uuid4()),
             }
         ),
     )
     response = await client.text_moderation_async(request)
-    if response.status_code != 200:
+    if response.status_code != 200 or response.body.data is None:
         logger.error("Content moderation failed: %s", response.body)
         return False
     labels = response.body.data.labels.split(",")

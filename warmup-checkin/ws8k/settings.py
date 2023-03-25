@@ -25,8 +25,8 @@ CONTENT_MODERATION_ACCESS_KEY_SECRET = config(
 CONTENT_MODERATION_ENDPOINT = config(
     "CONTENT_MODERATION_ENDPOINT", cast=str, default="green-cip.cn-beijing.aliyuncs.com"
 )
-# CAPTCHA_ACCESS_KEY_ID = config("CAPTCHA_ACCESS_KEY_ID", cast=str)
-# CAPTCHA_ACCESS_KEY_SECRET = config("CAPTCHA_ACCESS_KEY_SECRET", cast=Secret)
+NVC_ACCESS_KEY_ID = config("NVC_ACCESS_KEY_ID", cast=str)
+NVC_ACCESS_KEY_SECRET = config("NVC_ACCESS_KEY_SECRET", cast=Secret)
 VALIDATE_TEAM_TOKEN_URL = config(
     "VALIDATE_TEAM_TOKEN_URL",
     cast=str,
