@@ -110,6 +110,22 @@ yarl = ">=1.0,<2.0"
 speedups = ["Brotli", "aiodns", "cchardet"]
 
 [[package]]
+name = "aiohttp-socks"
+version = "0.8.0"
+description = "Proxy connector for aiohttp"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "aiohttp_socks-0.8.0-py3-none-any.whl", hash = "sha256:bb662f50bb5d234f72e2b9ac85b655cb1aed806dce4fec71398b5a9ac0480c17"},
+    {file = "aiohttp_socks-0.8.0.tar.gz", hash = "sha256:927b1d3b347448f86ff5245c9ca19e40f397eb93906682be592790678c982f37"},
+]
+
+[package.dependencies]
+aiohttp = ">=2.3.2"
+python-socks = {version = ">=2.0.0,<3.0.0", extras = ["asyncio"]}
+
+[[package]]
 name = "aiosignal"
 version = "1.3.1"
 description = "aiosignal: a list of registered asynchronous callbacks"
@@ -1018,6 +1034,27 @@ files = [
 ]
 
 [[package]]
+name = "python-socks"
+version = "2.2.0"
+description = "Core proxy (SOCKS4, SOCKS5, HTTP tunneling) functionality for Python"
+category = "main"
+optional = false
+python-versions = "*"
+files = [
+    {file = "python-socks-2.2.0.tar.gz", hash = "sha256:81500aca769165660cbbf38500849ffbedd50a8c50b6694f5132da3e21c7b30a"},
+    {file = "python_socks-2.2.0-py3-none-any.whl", hash = "sha256:e8649f44c48669639d87b9469b5988fa4c5f42674b03aed26b2ac72b5c9f826d"},
+]
+
+[package.dependencies]
+async-timeout = {version = ">=3.0.1", optional = true, markers = "extra == \"asyncio\""}
+
+[package.extras]
+anyio = ["anyio (>=3.3.4)"]
+asyncio = ["async-timeout (>=3.0.1)"]
+curio = ["curio (>=1.4)"]
+trio = ["trio (>=0.16.0)"]
+
+[[package]]
 name = "redis"
 version = "4.5.3"
 description = "Python client for Redis database and key-value store"
@@ -1447,4 +1484,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "eb8e99a90fbe6a933e474fb21c3cca8cdbcf4ad6bb1627c7bdc3512a32a4b3bb"
+content-hash = "1fb29cbd62966fdd44aced33dbf4313fa79dafdcdc0971db5d3af16fada3d2e4"

@@ -5,6 +5,7 @@ config = Config(".env")
 
 DEBUG = config("DEBUG", cast=bool, default=False)
 OPENAI_API_KEY = config("OPENAI_API_KEY", cast=Secret)
+OPENAI_API_PROXY = config("OPENAI_API_PROXY", cast=str, default="")
 SESSION_SECRET = config("SESSION_SECRET", cast=Secret)
 FLAG = config(
     "FLAG",

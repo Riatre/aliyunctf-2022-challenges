@@ -10,6 +10,11 @@ from redis import asyncio as aioredis
 
 logger = structlog.get_logger()
 openai.api_key = settings.OPENAI_API_KEY
+if settings.OPENAI_API_PROXY:
+    openai.proxy = {
+        "http": settings.OPENAI_API_PROXY,
+        "https": settings.OPENAI_API_PROXY,
+    }
 
 PERSONALITY = textwrap.dedent(
     f"""
