@@ -22,6 +22,17 @@ services:
         read_only: true
     depends_on:
       - redis
+  naive:
+    image: ghcr.io/riatre/naiveproxy:v111.0.5563.64-1
+    profiles:
+      - cnmgfw
+    expose:
+      - "1080"
+    volumes:
+      - type: bind
+        source: $PWD/naive.json
+        target: /config.json
+        read_only: true
 
 volumes:
   redis-data: 

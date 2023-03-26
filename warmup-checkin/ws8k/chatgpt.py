@@ -6,15 +6,12 @@ from . import settings, content_moderation
 import openai
 import textwrap
 import structlog
+import aiohttp
+import aiohttp_socks
 from redis import asyncio as aioredis
 
 logger = structlog.get_logger()
 openai.api_key = settings.OPENAI_API_KEY
-if settings.OPENAI_API_PROXY:
-    openai.proxy = {
-        "http": settings.OPENAI_API_PROXY,
-        "https": settings.OPENAI_API_PROXY,
-    }
 
 PERSONALITY = textwrap.dedent(
     f"""
@@ -129,15 +126,27 @@ async def chat_with_ctf_assistant(
             )
 
     prompt = PRE_PROMPT + previous_messages + [message]
-    completion = await openai.ChatCompletion.acreate(
-        model=settings.MODEL_ID,
-        messages=[m.to_dict() for m in prompt],
-        max_tokens=settings.MAX_OUTPUT_TOKENS,
-        n=settings.BEST_N,
-        # cl100k_base; 8115: token id for "ali"; 20526: "unctf"; 19701: "Sorry"; 3534: "97"
-        logit_bias={8115: -3, 20526: -3, 19701: 5, 3534: -3},
-        user=userid,
-    )
+    if settings.OPENAI_API_PROXY:
+        conn_t = openai.aiosession.set(
+            aiohttp.ClientSession(
+                connector=aiohttp_socks.ProxyConnector.from_url(
+                    settings.OPENAI_API_PROXY
+                )
+            )
+        )
+    try:
+        completion = await openai.ChatCompletion.acreate(
+            model=settings.MODEL_ID,
+            messages=[m.to_dict() for m in prompt],
+            max_tokens=settings.MAX_OUTPUT_TOKENS,
+            n=settings.BEST_N,
+            # cl100k_base; 8115: token id for "ali"; 20526: "unctf"; 19701: "Sorry"; 3534: "97"
+            logit_bias={8115: -3, 20526: -3, 19701: 5, 3534: -3},
+            user=userid,
+        )
+    finally:
+        await openai.aiosession.get().close()
+        openai.aiosession.reset(conn_t)
     available_contents = []
     for choice in completion.choices:
         assert choice.message.role == "assistant"
