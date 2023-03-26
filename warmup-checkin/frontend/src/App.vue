@@ -1,6 +1,7 @@
 <script setup>
-import { ref, computed, inject } from "vue";
+import { ref, computed, inject, watch } from "vue";
 import { get_encoding } from "@dqbd/tiktoken";
+import { throttle } from "lodash-es";
 
 const Tokenizer = get_encoding("cl100k_base");
 const RTF = new Intl.RelativeTimeFormat(navigator.language);
@@ -21,10 +22,21 @@ const thread = ref([]);
 const acceptNewReply = ref(true);
 const solved = ref(false);
 const postTime = ref(getRelativeTimeString(Date.parse("2023-04-01 08:00:00 +0800")));
-const tokenLength = computed(() => Tokenizer.encode(msg.value).length);
+const tokenLength = ref(0);
 const maySubmit = computed(() => tokenLength.value > 0 && tokenLength.value <= 140);
 const consumeCaptchaToken = inject("consumeCaptchaToken");
 const setCaptchaState = inject("setCaptchaState");
+
+const throttledTokenCount = throttle((data) => {
+  tokenLength.value = Tokenizer.encode(data).length;
+}, 200);
+watch(msg, async (newMsg, oldMsg) => {
+  if (newMsg.length > 1000) {
+    tokenLength.value = "???";
+  } else {
+    throttledTokenCount(newMsg);
+  }
+});
 
 function refresh(history) {
   let new_thread = [];
@@ -47,6 +59,7 @@ async function send() {
   let appendie = setTimeout(() => {
     thread.value.push({
       role: "user",
+      reply_to: "organizer",
       content: msg.value,
       when: getRelativeTimeString(Date.now())
     });
@@ -130,7 +143,7 @@ async function again() {
     <template v-if="!solved">
       <template v-if="acceptNewReply">
         <div class="border border-gray-300 p-2">
-          <textarea id="input" class="w-full p-2 bg-transparent outline-none placeholder-gray-400 resize-none" rows="3"
+          <textarea id="input" class="w-full p-2 bg-transparent outline-none placeholder-gray-400 resize-none disabled:bg-gray-200 disabled:bg-opacity-50" rows="3"
             v-model="msg" :disabled="waitingReply" @keyup.ctrl.enter="maySubmit && send()" @input="error = ''"
             placeholder="抬点啥杠"></textarea>
           <div class="flex justify-start items-center">

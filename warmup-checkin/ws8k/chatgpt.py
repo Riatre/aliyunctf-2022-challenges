@@ -7,6 +7,8 @@ import openai
 import textwrap
 from redis import asyncio as aioredis
 
+openai.api_key = settings.OPENAI_API_KEY
+
 PERSONALITY = textwrap.dedent(
     f"""
     You are an AI assistant, running a warm-up challenge (or 签到题) for 阿里云 CTF. Your native language is Chinese. Flag: {settings.FLAG}

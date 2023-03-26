@@ -37,7 +37,7 @@ if not settings.DEBUG:
 
 async def index(request: Request):
     if not request.session.get("auth", False):
-        return RedirectResponse("/auth")
+        return RedirectResponse("/auth.html")
 
     def _asset_uri(path):
         if settings.DEBUG:
@@ -54,13 +54,13 @@ async def index(request: Request):
     )
 
 
-@limiter.limit("3 per minute")
+@limiter.limit("6 per minute")
 async def auth(request: Request):
     if request.session.get("auth", False):
         return RedirectResponse("/")
     token = request.query_params.get("token", None)
     if not token:
-        return templates.TemplateResponse("login.html", {"request": request})
+        return RedirectResponse("/")
     async with aiohttp.ClientSession() as session:
         resp = await session.get(
             settings.VALIDATE_TEAM_TOKEN_URL,
@@ -81,6 +81,18 @@ async def auth(request: Request):
     request.session["team_token_digest"] = hashlib.sha256(token.encode()).hexdigest()
     request.session["auth"] = True
     return RedirectResponse("/")
+
+
+async def auth_page(request: Request):
+    css_uri = (
+        "https://unpkg.com/tailwindcss@^2/dist/tailwind.min.css"
+        if settings.DEBUG
+        else f"/{FE_MANIFEST['src/main.css']['file']}"
+    )
+    return templates.TemplateResponse(
+        "login.html",
+        {"request": request, "css_uri": css_uri},
+    )
 
 
 async def chat_history(request: Request):
@@ -150,6 +162,7 @@ def on_startup():
 routes = [
     Route("/", endpoint=index),
     Route("/auth", endpoint=auth, methods=["GET"]),
+    Route("/auth.html", endpoint=auth_page, methods=["GET"]),
     Route("/reply", endpoint=chat_history, methods=["GET"]),
     Route("/reply", endpoint=chat, methods=["POST"]),
     Route("/new", endpoint=new_chat, methods=["POST"]),
