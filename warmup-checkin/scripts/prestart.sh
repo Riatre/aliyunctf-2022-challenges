@@ -1,0 +1,2 @@
+MODULE_NAME=ws8k.app
+export APP_MODULE="$MODULE_NAME:app"
