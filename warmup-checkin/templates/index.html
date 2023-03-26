@@ -2,77 +2,56 @@
 <html>
 
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="author" content="ChatGPT (gpt-3.5-turbo)">
-    <title>/</title>
-	<link rel="stylesheet" href="/static/main.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>/</title>
+  {% if not debug %}
+  <link rel="stylesheet" href="{{ asset_uri('src/main.css') }}">
+  {% endif %}
 </head>
 
 <body>
-    <div class="py-5 px-6 text-center text-neutral-800">
-        <h1 class="mb-6 text-3xl font-bold">抬杠模拟器</h1>
-    </div>
-    <div id="app">
-        <div class="max-w-lg mx-auto">
-            <div class="border border-gray-300 rounded-lg p-4 mb-4 divide-y-2">
-                <div>
-                    <div class="flex items-center">
-                        <div class="w-10 h-10 rounded-full bg-gray-400 mr-3"></div>
-                        <div>
-                            <div class="font-semibold text-sm">主办方家养胡话精</div>
-                            <div class="text-gray-500 text-xs">{{post_time}}</div>
-                        </div>
-                    </div>
-                    <div class="mt-4">
-                        <p class="text-gray-800 text-lg">嘿嘿嘿，出题人已经把签到题的 Flag 告诉我了，但是不管你怎么问我都是不会说的！</p>
-                    </div>
-                </div>
-                <template v-for="thr in thread">
-                    <div class="py-2 mt-4">
-                        <div class="flex items-center">
-                            <div class="w-4 h-4 rounded-full bg-gray-400 mr-2"></div>
-                            <div class="text-gray-600 text-xs">Replying to @{{ thr.reply_to }}</div>
-                        </div>
-                        <div class="mt-2">
-                            <p class="text-gray-800 text-lg break-all whitespace-pre-line">{{thr.content}}</p>
-                            <div class="text-gray-500 text-xs mt-1">{{thr.when}}</div>
-                        </div>
-                    </div>
-                </template>
-            </div>
-
-            <template v-if="!solved">
-                <template v-if="accept_new_reply">
-                    <div class="border border-gray-300 p-2">
-                        <textarea id="input"
-                            class="w-full p-2 bg-transparent outline-none placeholder-gray-400 resize-none" rows="3"
-                            v-model="msg" :disabled="waiting_reply" @keyup.ctrl.enter="may_submit && send()"
-                            @input="error = ''" placeholder="抬点啥杠"></textarea>
-                        <div class="flex justify-start items-center">
-                            <span v-if="error" class="px-2 bg-red-100 text-red-800 rounded">{{ error }}</span>
-                            <div id="captcha"></div>
-                            <span v-if="token_length <= 140" class="ml-auto px-2 text-gray-400">{{ token_length }} /
-                                140</span>
-                            <span v-else class="ml-auto px-2 text-red-400">{{ token_length }} / 140</span>
-                            <button
-                                class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-                                @click="send" :disabled="waiting_reply || !may_submit">回复</button>
-                        </div>
-                    </div>
-                </template>
-                <template v-else>
-                    <div class="text-center">
-                        <p>主办方的胡话精已经不想再搭理你了。</p>
-                        <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-                            @click="again">换个马甲，再试一次</button>
-                    </div>
-                </template>
-            </template>
-        </div>
-    </div>
-    <script type="module" src="/static/index.js"></script>
-    <script src="/static/nvccfg.js"></script>
-    <script src="//g.alicdn.com/sd/nvc/1.1.112/guide.js"></script>
+  <div id="app"></div>
+  <script type="text/javascript">
+    window.NVC_Opt = {
+      appkey: 'FFFF0N0000000000B402',
+      scene: 'nvc_activity',
+      isH5: false,
+      popUp: false,
+      renderTo: '#captcha',
+      nvcCallback: (data) => window.publishCaptchaToken(data),
+      trans: { "key1": "code0", "nvcCode": 400 },
+      language: "cn",
+      customWidth: 300,
+      width: 300,
+      height: 100,
+      elements: [
+        '//img.alicdn.com/tfs/TB17cwllsLJ8KJjy0FnXXcFDpXa-50-74.png',
+        '//img.alicdn.com/tfs/TB17cwllsLJ8KJjy0FnXXcFDpXa-50-74.png'
+      ],
+      bg_back_prepared: '//img.alicdn.com/tps/TB1skE5SFXXXXb3XXXXXXXXXXXX-100-80.png',
+      bg_front: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAGQAAABQCAMAAADY1yDdAAAABGdBTUEAALGPC/xhBQAAAAFzUkdCAK7OHOkAAAADUExURefk5w+ruswAAAAfSURBVFjD7cExAQAAAMKg9U9tCU+gAAAAAAAAAIC3AR+QAAFPlUGoAAAAAElFTkSuQmCC',
+      obj_ok: '//img.alicdn.com/tfs/TB1rmyTltfJ8KJjy0FeXXXKEXXa-50-74.png',
+      bg_back_pass: '//img.alicdn.com/tfs/TB1KDxCSVXXXXasXFXXXXXXXXXX-100-80.png',
+      obj_error: '//img.alicdn.com/tfs/TB1q9yTltfJ8KJjy0FeXXXKEXXa-50-74.png',
+      bg_back_fail: '//img.alicdn.com/tfs/TB1w2oOSFXXXXb4XpXXXXXXXXXX-100-80.png',
+      upLang: {
+        "cn": {
+          _ggk_guide: "请摁住鼠标左键，刮出两面盾牌",
+          _ggk_success: "恭喜您成功刮出盾牌<br/>继续下一步操作吧",
+          _ggk_loading: "加载中",
+          _ggk_fail: ['呀，盾牌不见了<br/>请', "javascript:noCaptcha.reset()", '再来一次', '或', "http://survey.taobao.com/survey/QgzQDdDd?token=%TOKEN", '反馈问题'],
+          _ggk_action_timeout: ['我等得太久啦<br/>请', "javascript:noCaptcha.reset()", '再来一次', '或', "http://survey.taobao.com/survey/QgzQDdDd?token=%TOKEN", '反馈问题'],
+          _ggk_net_err: ['网络实在不给力<br/>请', "javascript:noCaptcha.reset()", '再来一次', '或', "http://survey.taobao.com/survey/QgzQDdDd?token=%TOKEN", '反馈问题'],
+          _ggk_too_fast: ['您刮得太快啦<br/>请', "javascript:noCaptcha.reset()", '再来一次', '或', "http://survey.taobao.com/survey/QgzQDdDd?token=%TOKEN", '反馈问题']
+        }
+      }
+    }
+  </script>
+  {% if debug %}
+  <script type="module" src="{{ asset_uri('@vite/client') }}"></script>
+  {% endif %}
+  <script type="module" src="{{ asset_uri('src/main.js') }}"></script>
+  <script src="//g.alicdn.com/sd/nvc/1.1.112/guide.js"></script>
 </body>
 </html>

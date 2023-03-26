@@ -19,6 +19,7 @@ from . import settings, chatgpt, bot_detect
 import hashlib
 import logging
 import time
+import json
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +30,28 @@ limiter = slowapi.Limiter(
     storage_uri=settings.REDIS_URL,
 )
 
+if not settings.DEBUG:
+    with open("frontend/dist/manifest.json") as f:
+        FE_MANIFEST = json.load(f)
 
-async def index(request):
+
+async def index(request: Request):
     if not request.session.get("auth", False):
         return RedirectResponse("/auth")
-    return FileResponse("./templates/index.html")
+
+    def _asset_uri(path):
+        if settings.DEBUG:
+            return str(request.url.replace(path=path, port=5173))
+        return f"/{FE_MANIFEST[path]['file']}"
+
+    return templates.TemplateResponse(
+        "index.html",
+        {
+            "request": request,
+            "debug": settings.DEBUG,
+            "asset_uri": _asset_uri,
+        },
+    )
 
 
 @limiter.limit("3 per minute")
@@ -135,8 +153,13 @@ routes = [
     Route("/reply", endpoint=chat_history, methods=["GET"]),
     Route("/reply", endpoint=chat, methods=["POST"]),
     Route("/new", endpoint=new_chat, methods=["POST"]),
-    Mount("/static", app=StaticFiles(directory="static"), name="static"),
 ]
+if not settings.DEBUG:
+    routes.append(
+        Mount(
+            "/assets", app=StaticFiles(directory="frontend/dist/assets"), name="assets"
+        )
+    )
 middlewares = [
     Middleware(
         SessionMiddleware,

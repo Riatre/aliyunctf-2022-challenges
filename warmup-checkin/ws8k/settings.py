@@ -3,6 +3,7 @@ from starlette.datastructures import Secret
 
 config = Config(".env")
 
+DEBUG = config("DEBUG", cast=bool, default=False)
 OPENAI_API_KEY = config("OPENAI_API_KEY", cast=Secret)
 SESSION_SECRET = config("SESSION_SECRET", cast=Secret)
 FLAG = config(
