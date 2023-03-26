@@ -1188,6 +1188,21 @@ anyio = ">=3.4.0,<5"
 full = ["httpx (>=0.22.0)", "itsdangerous", "jinja2", "python-multipart", "pyyaml"]
 
 [[package]]
+name = "starlette-context"
+version = "0.3.6"
+description = "Middleware for Starlette that allows you to store and access the context data of a request. Can be used with logging so logs automatically use request headers such as x-request-id or x-correlation-id."
+category = "main"
+optional = false
+python-versions = ">=3.8,<4.0"
+files = [
+    {file = "starlette_context-0.3.6-py3-none-any.whl", hash = "sha256:b14ce373fbb6895a2182a7104b9f63ba20c8db83444005fb9a844dd77ad9895c"},
+    {file = "starlette_context-0.3.6.tar.gz", hash = "sha256:d361a36ba2d4acca3ab680f917b25e281533d725374752d47607a859041958cb"},
+]
+
+[package.dependencies]
+starlette = "*"
+
+[[package]]
 name = "starlette-session"
 version = "0.4.3"
 description = "A library for backend side session with starlette"
@@ -1207,6 +1222,24 @@ starlette = "<1"
 aioredis = ["aioredis (>=1.3.1)"]
 pymemcache = ["pymemcache (>=3.3.0)"]
 redis = ["redis (>=3.5.3)"]
+
+[[package]]
+name = "structlog"
+version = "22.3.0"
+description = "Structured Logging for Python"
+category = "main"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "structlog-22.3.0-py3-none-any.whl", hash = "sha256:b403f344f902b220648fa9f286a23c0cc5439a5844d271fec40562dbadbc70ad"},
+    {file = "structlog-22.3.0.tar.gz", hash = "sha256:e7509391f215e4afb88b1b80fa3ea074be57a5a17d794bd436a5c949da023333"},
+]
+
+[package.extras]
+dev = ["structlog[docs,tests,typing]"]
+docs = ["furo", "myst-parser", "sphinx", "sphinx-notfound-page", "sphinxcontrib-mermaid", "twisted"]
+tests = ["coverage[toml]", "freezegun (>=0.2.8)", "pretend", "pytest (>=6.0)", "pytest-asyncio (>=0.17)", "simplejson"]
+typing = ["mypy", "rich", "twisted"]
 
 [[package]]
 name = "tiktoken"
@@ -1414,4 +1447,4 @@ multidict = ">=4.0"
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "8a841db10080111c843e1db352ff4daf8d6e4b74ab9c2750b1671786a5ededaf"
+content-hash = "eb8e99a90fbe6a933e474fb21c3cca8cdbcf4ad6bb1627c7bdc3512a32a4b3bb"

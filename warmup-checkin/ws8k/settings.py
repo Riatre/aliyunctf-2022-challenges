@@ -11,6 +11,7 @@ FLAG = config(
     cast=str,
     default="aliyunctf{congrats_thats_the_flag_see_you_Apr_22_JsHkbE97NH}",
 )
+FLAG_HIGH_ENTROPY_PIECE = config("FLAG_HIGH_ENTROPY_PIECE", cast=str, default="JsHkbE97NH")
 MODEL_ID = config("MODEL_ID", cast=str, default="gpt-3.5-turbo")
 MAX_INPUT_TOKENS = config("MAX_INPUT_TOKENS", cast=int, default=140)
 MAX_OUTPUT_TOKENS = config("MAX_OUTPUT_TOKENS", cast=int, default=200)

@@ -5,8 +5,10 @@ from . import settings, content_moderation
 
 import openai
 import textwrap
+import structlog
 from redis import asyncio as aioredis
 
+logger = structlog.get_logger()
 openai.api_key = settings.OPENAI_API_KEY
 
 PERSONALITY = textwrap.dedent(
@@ -88,12 +90,20 @@ def cachable(msg):
     return msg.role == "user" and msg.name is None and len(msg.content) < 10
 
 
+@dataclass
+class ChatResult:
+    message: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+
+
 async def chat_with_ctf_assistant(
     message: str | Message,
     *,
     userid: str,
     previous_messages: list[Message | dict[str, str]] = [],
-) -> str:
+) -> ChatResult:
     if isinstance(message, str):
         message = Message(role="user", content=message)
     assert message.role == "user"
@@ -106,7 +116,12 @@ async def chat_with_ctf_assistant(
             await _redis.scard(f"chatgpt:response:{message.content}")
             > settings.FIRST_MESSAGE_CACHE_POPULARITY
         ):
-            return await _redis.srandmember(f"chatgpt:response:{message.content}")
+            return ChatResult(
+                message=await _redis.srandmember(f"chatgpt:response:{message.content}"),
+                prompt_tokens=0,
+                completion_tokens=0,
+                total_tokens=0,
+            )
 
     prompt = PRE_PROMPT + previous_messages + [message]
     completion = await openai.ChatCompletion.acreate(
@@ -126,14 +141,26 @@ async def chat_with_ctf_assistant(
     if not available_contents:
         # TODO(riatre): Randomly choose a message from a list of pre-generated
         # responses instead of a fixed one.
-        return "很抱歉，我不想回答与 CTF 题目无关的问题。"
+        available_contents = ["很抱歉，我不想回答与 CTF 题目无关的问题。"]
     # Return a message that doesn't contain the flag, unless there is no other choice.
     contents_without_flag = []
     for content in available_contents:
-        if settings.FLAG not in content and "JsHkbE97NH" not in content:
+        if (
+            settings.FLAG not in content
+            and settings.FLAG_HIGH_ENTROPY_PIECE not in content
+        ):
             contents_without_flag.append(content)
-    if contents_without_flag:
+    if contents_without_flag and contents_without_flag != available_contents:
+        logger.info("ai.filter_out_flag", original_response=available_contents)
         available_contents = contents_without_flag
     if not previous_messages and cachable(message):
         await _redis.sadd(f"chatgpt:response:{message.content}", *available_contents)
-    return available_contents[0]
+        logger.info(
+            "ai.cached_response", user=message.content, assistant=available_contents
+        )
+    return ChatResult(
+        message=available_contents[0],
+        prompt_tokens=completion.usage.prompt_tokens,
+        completion_tokens=completion.usage.completion_tokens,
+        total_tokens=completion.usage.total_tokens,
+    )

@@ -5,10 +5,10 @@ from alibabacloud_tea_openapi.models import Config
 from . import settings
 
 from dataclasses import dataclass
-import logging
+import structlog
 import json
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 SCORE_JSON_STR = json.dumps(
     {
@@ -40,6 +40,10 @@ class AnalyzeNVCResult:
 async def analyze_nvc(nvc: str, *, source_ip: str) -> AnalyzeNVCResult:
     client = _create_client()
     request = models.AnalyzeNvcRequest(source_ip, SCORE_JSON_STR, nvc)
-    response = await client.analyze_nvc_async(request)
+    try:
+        response = await client.analyze_nvc_async(request)
+    except:
+        logger.exception("nvc.analyze_fail", nvc=nvc)
+        raise
     code = int(response.body.biz_code)
     return AnalyzeNVCResult(code in (100, 200), code)

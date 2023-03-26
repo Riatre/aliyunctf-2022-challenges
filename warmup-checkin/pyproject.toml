@@ -21,6 +21,8 @@ jinja2 = "^3.1.2"
 alibabacloud-green20220302 = "^1.0.4"
 aiohttp = "^3.8.4"
 alibabacloud-afs20180112 = { file = "vendor/alibabacloud_afs20180112-1.0.0-py3-none-any.whl" }
+starlette-context = "^0.3.6"
+structlog = "^22.3.0"
 
 
 [tool.poetry.group.dev.dependencies]

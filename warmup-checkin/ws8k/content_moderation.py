@@ -6,9 +6,9 @@ from . import settings
 
 import json
 import uuid
-import logging
+import structlog
 
-logger = logging.getLogger(__name__)
+logger = structlog.get_logger(__name__)
 
 
 def _create_client():
@@ -34,9 +34,13 @@ async def is_text_safe_to_display(message: str) -> bool:
             }
         ),
     )
-    response = await client.text_moderation_async(request)
+    try:
+        response = await client.text_moderation_async(request)
+    except:
+        logger.exception("content_moderation.fail")
+        raise
     if response.status_code != 200 or response.body.data is None:
-        logger.error("Content moderation failed: %s", response.body)
+        logger.error("content_moderation.fail", response=response.body)
         return False
     labels = response.body.data.labels.split(",")
     if set(labels) & {
@@ -47,10 +51,10 @@ async def is_text_safe_to_display(message: str) -> bool:
         "cyberbullying",
     }:
         logger.warning(
-            "Blocked message: %s, labels: %s, reason: %s",
-            message,
-            response.body.data.labels,
-            response.body.data.reason,
+            "content_moderation.blocked",
+            message=message,
+            labels=response.body.data.labels,
+            reason=response.body.data.reason,
         )
         return False
     return True
