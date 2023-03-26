@@ -74,7 +74,7 @@ const App = {
                     when: getRelativeTimeString(Date.now())
                 });
                 appended = true;
-            }, 500);
+            }, 250);
             let resp = await fetch("/reply", {
                 method: "POST",
                 headers: {
