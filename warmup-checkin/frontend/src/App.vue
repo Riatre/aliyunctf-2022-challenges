@@ -83,13 +83,13 @@ async function send() {
   }
   clearTimeout(appendie);
   if (j.nvc_code) {
-    if (appended) thread.pop();
+    if (appended) thread.value.pop();
     setCaptchaState(j.nvc_code);
     if (j.nvc_code >= 800) {
       error.value = "blocked: bot detected";
     }
   } else if (j.error) {
-    if (appended) thread.pop();
+    if (appended) thread.value.pop();
     error.value = j.error;
   } else {
     refresh(j);
