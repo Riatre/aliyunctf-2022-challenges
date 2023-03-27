@@ -26,7 +26,7 @@ CONTENT_MODERATION_ACCESS_KEY_SECRET = config(
     "CONTENT_MODERATION_ACCESS_KEY_SECRET", cast=Secret
 )
 CONTENT_MODERATION_ENDPOINT = config(
-    "CONTENT_MODERATION_ENDPOINT", cast=str, default="green-cip.cn-beijing.aliyuncs.com"
+    "CONTENT_MODERATION_ENDPOINT", cast=str, default="green-cip.cn-shanghai.aliyuncs.com"
 )
 NVC_ACCESS_KEY_ID = config("NVC_ACCESS_KEY_ID", cast=str)
 NVC_ACCESS_KEY_SECRET = config("NVC_ACCESS_KEY_SECRET", cast=Secret)
