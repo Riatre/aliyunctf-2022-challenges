@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import './style.css'
 import App from './App.vue'
+import { createI18n } from 'vue-i18n';
 
 let last_captcha_token = undefined;
 window.publishCaptchaToken = (token) => {
@@ -40,6 +41,13 @@ function setCaptchaState(code) {
 }
 
 const app = createApp(App);
+const i18n = createI18n({
+    legacy: false,
+    locale: window.navigator.language.split('-')[0],
+    fallbackLocale: 'en',
+    silentFallbackWarn: true,
+});
 app.provide("consumeCaptchaToken", consumeCaptchaToken);
 app.provide("setCaptchaState", setCaptchaState);
+app.use(i18n);
 app.mount('#app');

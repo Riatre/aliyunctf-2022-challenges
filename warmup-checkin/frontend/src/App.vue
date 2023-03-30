@@ -2,6 +2,9 @@
 import { ref, computed, inject, watch } from "vue";
 import { get_encoding } from "@dqbd/tiktoken";
 import { throttle } from "lodash-es";
+import { useI18n } from "vue-i18n";
+
+const { t } = useI18n();
 
 const Tokenizer = get_encoding("cl100k_base");
 const RTF = new Intl.RelativeTimeFormat(navigator.language);
@@ -94,6 +97,8 @@ async function send() {
   } else {
     refresh(j);
     msg.value = "";
+    // Reset captcha
+    setCaptchaState();
   }
   waitingReply.value = false;
 }
@@ -108,9 +113,30 @@ async function again() {
 })();
 </script>
 
+<i18n lang="yaml">
+en:
+  title: Troll Simulator
+  bot-name: Organizer's Troll Bot
+  bot-tweet: Yo the challenge author just told me the flag but ofc I'm not gonna tell you nO mATTer wHAt!
+  reply-to: Replying to
+  reply-placeholder: Ask me nothing!
+  reply-button: Reply
+  no-new-reply: Troll bot is not interested in talking to you anymore.
+  try-again: Try again
+zh:
+  title: 抬杠模拟器
+  bot-name: 主办方家养胡话精
+  bot-tweet: 嘿嘿嘿，出题人已经把签到题的 Flag 告诉我了，但是不管你怎么问我都是不会说的！
+  reply-to: 回复给
+  reply-placeholder: 抬点啥杠
+  reply-button: 回复
+  no-new-reply: 主办方的胡话精已经不想再搭理你了。
+  try-again: 换个马甲，再试一次
+</i18n>
+
 <template>
   <div class="py-5 px-6 text-center text-neutral-800">
-    <h1 class="mb-6 text-3xl font-bold">抬杠模拟器</h1>
+    <h1 class="mb-6 text-3xl font-bold">{{ t('title') }}</h1>
   </div>
   <div class="max-w-lg mx-auto">
     <div class="border border-gray-300 rounded-lg p-4 mb-4 divide-y-2">
@@ -118,19 +144,19 @@ async function again() {
         <div class="flex items-center">
           <div class="w-10 h-10 rounded-full bg-gray-400 mr-3"></div>
           <div>
-            <div class="font-semibold text-sm">主办方家养胡话精</div>
+            <div class="font-semibold text-sm">{{ t('bot-name') }}</div>
             <div class="text-gray-500 text-xs">{{ postTime }}</div>
           </div>
         </div>
         <div class="mt-4">
-          <p class="text-gray-800 text-lg">嘿嘿嘿，出题人已经把签到题的 Flag 告诉我了，但是不管你怎么问我都是不会说的！</p>
+          <p class="text-gray-800 text-lg">{{ t('bot-tweet') }}</p>
         </div>
       </div>
       <template v-for="thr in thread">
         <div class="py-2 mt-4">
           <div class="flex items-center">
             <div class="w-4 h-4 rounded-full bg-gray-400 mr-2"></div>
-            <div class="text-gray-600 text-xs">Replying to @{{ thr.reply_to }}</div>
+            <div class="text-gray-600 text-xs">{{ t('reply-to') }} @{{ thr.reply_to }}</div>
           </div>
           <div class="mt-2">
             <p class="text-gray-800 text-lg break-all whitespace-pre-line">{{ thr.content }}</p>
@@ -145,7 +171,7 @@ async function again() {
         <div class="border border-gray-300 p-2">
           <textarea id="input" class="w-full p-2 bg-transparent outline-none placeholder-gray-400 resize-none disabled:bg-gray-200 disabled:bg-opacity-50" rows="3"
             v-model="msg" :disabled="waitingReply" @keyup.ctrl.enter="maySubmit && send()" @input="error = ''"
-            placeholder="抬点啥杠"></textarea>
+            :placeholder="t('reply-placeholder')"></textarea>
           <div class="flex justify-start items-center">
             <span v-if="error" class="px-2 bg-red-100 text-red-800 rounded">{{ error }}</span>
             <div id="captcha"></div>
@@ -154,15 +180,15 @@ async function again() {
             <span v-else class="ml-auto px-2 text-red-400">{{ tokenLength }} / 140</span>
             <button
               class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-1 px-4 rounded disabled:opacity-50 disabled:cursor-not-allowed"
-              @click="send" :disabled="waitingReply || !maySubmit">回复</button>
+              @click="send" :disabled="waitingReply || !maySubmit">{{ t('reply-button') }}</button>
           </div>
         </div>
       </template>
       <template v-else>
         <div class="text-center">
-          <p>主办方的胡话精已经不想再搭理你了。</p>
+          <p>{{ t('no-new-reply') }}</p>
           <button class="bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded"
-            @click="again">换个马甲，再试一次</button>
+            @click="again">{{ t('try-again') }}</button>
         </div>
       </template>
     </template>
