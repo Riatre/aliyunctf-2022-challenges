@@ -36,3 +36,4 @@ VALIDATE_TEAM_TOKEN_URL = config(
     default="http://47.97.37.60/team_token_check.php",
 )
 VALIDATE_TEAM_TOKEN_SECRET = config("VALIDATE_TEAM_TOKEN_SECRET", cast=Secret)
+REPLY_RATE_LIMIT = config("REPLY_RATE_LIMIT", cast=str, default="6 per minute, 50 per 3 hour")

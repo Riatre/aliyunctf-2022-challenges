@@ -31,6 +31,7 @@ limiter = slowapi.Limiter(
     or slowapi.util.get_remote_address(request),
     headers_enabled=True,
     storage_uri=settings.REDIS_URL,
+    auto_check=False,
 )
 
 if not settings.DEBUG:
@@ -78,6 +79,7 @@ async def auth(request: Request):
     token = request.query_params.get("token", None)
     if not token:
         return RedirectResponse("/")
+    app.state.limiter._check_request_limit(request, auth.__wrapped__, False)
     async with aiohttp.ClientSession() as session:
         resp = await session.get(
             settings.VALIDATE_TEAM_TOKEN_URL,
@@ -131,7 +133,7 @@ async def chat_history(request: Request):
     )
 
 
-@limiter.limit("6 per minute, 50 per 3 hour")
+@limiter.limit(settings.REPLY_RATE_LIMIT)
 async def chat(request: Request):
     if not request.session.get("auth", False):
         return JSONResponse({"error": "unauthenticated"}, status_code=403)
@@ -166,6 +168,8 @@ async def chat(request: Request):
         return JSONResponse(
             {"error": "nvc action needed", "nvc_code": nvc_res.code}, status_code=403
         )
+    # Apply rate limit after NVC check.
+    app.state.limiter._check_request_limit(request, chat.__wrapped__, False)
     input_token_count = len(app.state.tokenizer.encode(message))
     if input_token_count > settings.MAX_INPUT_TOKENS:
         log.info("chat.too_long_after_tokenization", tokens=input_token_count)
