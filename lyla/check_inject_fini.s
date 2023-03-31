@@ -69,7 +69,7 @@ bye:
     movqq rdi, rbx
     // GNU AS (2.40) is too stupid: it assembles "push (_fin-_begin+8)" into a 0x68 (4 byte push) instead of single byte one.
     .byte 0x6A
-    .byte (_fin-_begin+8)
+    .byte (_end-8-_begin+8)
     pop rcx
     xor eax, eax
     pop rbx
