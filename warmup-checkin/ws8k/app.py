@@ -74,6 +74,7 @@ async def index(request: Request):
 
 @limiter.limit("6 per minute")
 async def auth(request: Request):
+    request.state.view_rate_limit = None
     if request.session.get("auth", False):
         return RedirectResponse("/")
     token = request.query_params.get("token", None)
@@ -135,6 +136,7 @@ async def chat_history(request: Request):
 
 @limiter.limit(settings.REPLY_RATE_LIMIT)
 async def chat(request: Request):
+    request.state.view_rate_limit = None
     if not request.session.get("auth", False):
         return JSONResponse({"error": "unauthenticated"}, status_code=403)
     previous_messages = request.session.get("chat_history", None) or []
