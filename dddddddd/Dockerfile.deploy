@@ -1,0 +1,28 @@
+FROM gcc:12.2.0-bullseye AS build
+COPY readflag.c /tmp/readflag.c
+RUN gcc -Os -o /tmp/readflag /tmp/readflag.c
+RUN apt update && apt install uidmap && rm -rf /var/lib/apt/lists/*
+
+# redpwn/jail v0.3.1
+# See https://github.com/redpwn/jail#competitor-faq
+# tl;dr nothing special here, just a glorified xinetd
+FROM pwn.red/jail@sha256:cacd8a66d681647ab1b6740b979f55e5788c135d6272f8c8ee5d62e8cfbc167c
+COPY --from=build /usr/bin/newuidmap /usr/bin/newgidmap /usr/bin/
+COPY --from=build /lib/*-gnu/libaudit.so.1 /lib/*-gnu/libselinux.so.1 /lib/*-gnu/libcap-ng.so.0 /usr/lib/*-gnu/libpcre2-8.so.0 /lib/
+COPY --from=build /lib/*-gnu/libdl.so.2 /lib/
+
+# COPY --from=gcr.io/distroless/cc-debian11 / /srv
+COPY --from=debian:11-slim / /srv
+COPY bin/snapshot_blob.bin /srv/app/snapshot_blob.bin
+COPY bin/d8 /srv/app/run
+COPY --from=build /tmp/readflag /srv/readflag
+RUN echo '#!/bin/sh' > /jail/hook.sh && \
+    echo sed -i 's/nosuid:true//g' '$nsjail_cfg' >> /jail/hook.sh && \
+    echo 'echo uidmap { count: 1000  use_newidmap: true } >> $nsjail_cfg' >> /jail/hook.sh && \
+    echo 'echo disable_no_new_privs: true >> $nsjail_cfg' >> /jail/hook.sh && \
+    chmod +x /jail/hook.sh && \
+    echo '1000:1000:1000' > /etc/subuid
+RUN mkdir -p /srv/flag_inside && chown 1000:1000 /srv/flag_inside /srv/readflag && \
+    chmod 0500 /srv/flag_inside && chmod 4555 /srv/readflag
+
+ENV JAIL_MEM=64M
