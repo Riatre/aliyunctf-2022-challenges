@@ -1,0 +1,83 @@
+workspace(name = "hitori")
+
+load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+# Skylib
+# gcc-toolchain depends on bazel-skylib
+http_archive(
+    name = "bazel_skylib",
+    sha256 = "f7be3474d42aae265405a592bb7da8e171919d74c16f082a5457840f06054728",
+    urls = [
+        "https://mirror.bazel.build/github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
+        "https://github.com/bazelbuild/bazel-skylib/releases/download/1.2.1/bazel-skylib-1.2.1.tar.gz",
+    ],
+)
+
+load("@bazel_skylib//:workspace.bzl", "bazel_skylib_workspace")
+
+bazel_skylib_workspace()
+
+http_archive(
+    name = "hedron_compile_commands",
+    sha256 = "9a68018c9120a636e60988b265c85e56f169a1408ed0c6bd164dd3a6996a9b36",
+    strip_prefix = "bazel-compile-commands-extractor-752014925d055387ff4590a9862fb382350b0e5d",
+    url = "https://github.com/hedronvision/bazel-compile-commands-extractor/archive/752014925d055387ff4590a9862fb382350b0e5d.tar.gz",
+)
+
+load("@hedron_compile_commands//:workspace_setup.bzl", "hedron_compile_commands_setup")
+
+hedron_compile_commands_setup()
+
+http_archive(
+    name = "aspect_gcc_toolchain",
+    sha256 = "3341394b1376fb96a87ac3ca01c582f7f18e7dc5e16e8cf40880a31dd7ac0e1e",
+    strip_prefix = "gcc-toolchain-0.4.2",
+    url = "https://github.com/aspect-build/gcc-toolchain/archive/refs/tags/0.4.2.tar.gz",
+)
+
+load("@aspect_gcc_toolchain//toolchain:defs.bzl", "ARCHS", "gcc_register_toolchain")
+
+gcc_register_toolchain(
+    name = "gcc_toolchain_x86_64",
+    gcc_version = "10.3.0",
+    sysroot_variant = "x86_64",
+    target_arch = ARCHS.x86_64,
+)
+
+http_archive(
+    name = "com_google_absl",
+    sha256 = "832806247d1b7306c4aba27da3716fa6dd0f8fbb940d24939786d69532d03196",
+    strip_prefix = "abseil-cpp-bce5bec5517f8c9ec448db9c2ffdf977dfff18eb",
+    urls = ["https://github.com/abseil/abseil-cpp/archive/bce5bec5517f8c9ec448db9c2ffdf977dfff18eb.zip"],
+)
+
+http_archive(
+    name = "com_google_googletest",
+    sha256 = "82808543c49488e712d9bd84c50edf40d692ffdaca552b4b019b8b533d3cf8ef",
+    strip_prefix = "googletest-12a5852e451baabc79c63a86c634912c563d57bc",
+    urls = ["https://github.com/google/googletest/archive/12a5852e451baabc79c63a86c634912c563d57bc.zip"],
+)
+
+http_archive(
+    name = "fmt",
+    build_file = "//bazel:fmt.BUILD",
+    sha256 = "cceb4cb9366e18a5742128cb3524ce5f50e88b476f1e54737a47ffdf4df4c996",
+    strip_prefix = "fmt-9.1.0",
+    urls = ["https://github.com/fmtlib/fmt/releases/download/9.1.0/fmt-9.1.0.zip"],
+)
+
+http_archive(
+    name = "com_github_randy408_libspng",
+    build_file = "//bazel:spng.BUILD",
+    sha256 = "a0e2d8d94447efdf209cd7796323b4ce0c4f6633017b39a9ae9259a115e892da",
+    strip_prefix = "libspng-0.7.3",
+    urls = ["https://github.com/randy408/libspng/archive/refs/tags/v0.7.3.zip"],
+)
+
+http_archive(
+    name = "zlib",
+    build_file = "//bazel:zlib.BUILD",
+    sha256 = "c2856951bbf30e30861ace3765595d86ba13f2cf01279d901f6c62258c57f4ff",
+    strip_prefix = "zlib-1.2.13",
+    urls = ["https://github.com/madler/zlib/archive/refs/tags/v1.2.13.zip"],
+)
