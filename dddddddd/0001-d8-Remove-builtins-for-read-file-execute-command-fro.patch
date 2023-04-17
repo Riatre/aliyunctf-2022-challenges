@@ -1,4 +1,4 @@
-From dc6de2bb2ca7644349d83cc07439ce4044fd3080 Mon Sep 17 00:00:00 2001
+From e3f75a2e00b17fadd909bb8dcd61f914980eceba Mon Sep 17 00:00:00 2001
 From: Past CTF Organizers <devnull@pwnable.ai>
 Date: Fri, 27 Jan 2023 03:30:28 +0800
 Subject: [PATCH 1/2] [d8] Remove builtins for read file / execute command from
@@ -10,7 +10,7 @@ Subject: [PATCH 1/2] [d8] Remove builtins for read file / execute command from
  2 files changed, 38 deletions(-)
 
 diff --git a/src/d8/d8.cc b/src/d8/d8.cc
-index d69c24e816e..2503a63f283 100644
+index ad36c7ac1f8..88d69ee7548 100644
 --- a/src/d8/d8.cc
 +++ b/src/d8/d8.cc
 @@ -3288,18 +3288,6 @@ Local<ObjectTemplate> Shell::CreateGlobalTemplate(Isolate* isolate) {

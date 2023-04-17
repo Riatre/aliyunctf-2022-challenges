@@ -1,4 +1,4 @@
-From 9e3a043acff4cfec96775604587fbf0685a143cb Mon Sep 17 00:00:00 2001
+From a5d68c2f29d0f688e3a5145c35111c4e491e4e37 Mon Sep 17 00:00:00 2001
 From: Future CTF Organizer <devnull@pwnable.ai>
 Date: Sat, 11 Feb 2023 05:12:42 +0800
 Subject: [PATCH 2/2] Revert "[wasm] Remove serialization of WasmModuleObject"
@@ -11,7 +11,7 @@ This reverts commit 30e4ba6df4cdf5582de4d79850bcd270e6a75a7a.
  3 files changed, 115 insertions(+), 14 deletions(-)
 
 diff --git a/src/objects/value-serializer.cc b/src/objects/value-serializer.cc
-index 63c32f4ba18..48a74422a59 100644
+index 2efca82aaaa..44e3fca5b5b 100644
 --- a/src/objects/value-serializer.cc
 +++ b/src/objects/value-serializer.cc
 @@ -41,7 +41,10 @@
@@ -48,7 +48,7 @@ index 63c32f4ba18..48a74422a59 100644
  // Sub-tags only meaningful for error serialization.
  enum class ErrorTag : uint8_t {
    // The error is a EvalError. No accompanying data.
-@@ -1085,21 +1097,41 @@ Maybe<bool> ValueSerializer::WriteJSSharedArray(
+@@ -1094,21 +1106,41 @@ Maybe<bool> ValueSerializer::WriteJSSharedArray(
  
  #if V8_ENABLE_WEBASSEMBLY
  Maybe<bool> ValueSerializer::WriteWasmModule(Handle<WasmModuleObject> object) {
@@ -104,7 +104,7 @@ index 63c32f4ba18..48a74422a59 100644
    }
    return ThrowIfOutOfMemory();
  }
-@@ -1595,6 +1627,8 @@ MaybeHandle<Object> ValueDeserializer::ReadObjectInternal() {
+@@ -1621,6 +1653,8 @@ MaybeHandle<Object> ValueDeserializer::ReadObjectInternal() {
      case SerializationTag::kError:
        return ReadJSError();
  #if V8_ENABLE_WEBASSEMBLY
@@ -113,7 +113,7 @@ index 63c32f4ba18..48a74422a59 100644
      case SerializationTag::kWasmModuleTransfer:
        return ReadWasmModuleTransfer();
      case SerializationTag::kWasmMemoryTransfer:
-@@ -2297,6 +2331,49 @@ MaybeHandle<JSObject> ValueDeserializer::ReadWasmModuleTransfer() {
+@@ -2323,6 +2357,49 @@ MaybeHandle<JSObject> ValueDeserializer::ReadWasmModuleTransfer() {
    return module;
  }
  
@@ -164,10 +164,10 @@ index 63c32f4ba18..48a74422a59 100644
    uint32_t id = next_id_++;
  
 diff --git a/src/objects/value-serializer.h b/src/objects/value-serializer.h
-index 13156b99dd2..783199aa93c 100644
+index f5ccdcbf0a5..b72b72c7a51 100644
 --- a/src/objects/value-serializer.h
 +++ b/src/objects/value-serializer.h
-@@ -304,6 +304,7 @@ class ValueDeserializer {
+@@ -307,6 +307,7 @@ class ValueDeserializer {
        bool& is_backed_by_rab) V8_WARN_UNUSED_RESULT;
    MaybeHandle<Object> ReadJSError() V8_WARN_UNUSED_RESULT;
  #if V8_ENABLE_WEBASSEMBLY
@@ -176,10 +176,10 @@ index 13156b99dd2..783199aa93c 100644
    MaybeHandle<WasmMemoryObject> ReadWasmMemory() V8_WARN_UNUSED_RESULT;
  #endif  // V8_ENABLE_WEBASSEMBLY
 diff --git a/test/unittests/objects/value-serializer-unittest.cc b/test/unittests/objects/value-serializer-unittest.cc
-index 257c3e228bb..ba3c9538729 100644
+index 9335bd114df..9388ef24040 100644
 --- a/test/unittests/objects/value-serializer-unittest.cc
 +++ b/test/unittests/objects/value-serializer-unittest.cc
-@@ -3312,6 +3312,15 @@ TEST_F(ValueSerializerTestWithWasm, RoundtripWasmTransfer) {
+@@ -3363,6 +3363,15 @@ TEST_F(ValueSerializerTestWithWasm, RoundtripWasmTransfer) {
    ExpectPass();
  }
  
@@ -195,7 +195,7 @@ index 257c3e228bb..ba3c9538729 100644
  TEST_F(ValueSerializerTestWithWasm, CannotTransferWasmWhenExpectingInline) {
    EnableTransferSerialization();
    ExpectFail();
-@@ -3325,6 +3334,13 @@ TEST_F(ValueSerializerTestWithWasm, ComplexObjectDuplicateTransfer) {
+@@ -3376,6 +3385,13 @@ TEST_F(ValueSerializerTestWithWasm, ComplexObjectDuplicateTransfer) {
    ExpectScriptTrue("result.mod1 === result.mod2");
  }
  
@@ -209,7 +209,7 @@ index 257c3e228bb..ba3c9538729 100644
  TEST_F(ValueSerializerTestWithWasm, ComplexObjectWithManyTransfer) {
    EnableTransferSerialization();
    EnableTransferDeserialization();
-@@ -3334,6 +3350,13 @@ TEST_F(ValueSerializerTestWithWasm, ComplexObjectWithManyTransfer) {
+@@ -3385,6 +3401,13 @@ TEST_F(ValueSerializerTestWithWasm, ComplexObjectWithManyTransfer) {
  }
  #endif  // V8_ENABLE_WEBASSEMBLY
  
