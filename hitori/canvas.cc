@@ -2,6 +2,7 @@
 
 #include <algorithm>
 
+#include "absl/log/check.h"
 #include "spng.h"
 
 namespace {
@@ -27,6 +28,7 @@ Canvas::Canvas(size_t width, size_t height) : width_(width), height_(height) {
   data_ = new color_t[alloc_size];
   std::fill(data_, data_ + alloc_size, 255);
 }
+Canvas::~Canvas() { delete[] data_; }
 
 absl::Status Canvas::Resize(size_t width, size_t height) {
   size_t alloc_size = 0;
@@ -76,6 +78,20 @@ absl::Status Canvas::DrawSolidCircle(size_t x, size_t y, size_t radius, pixel_t 
   return absl::OkStatus();
 }
 
+absl::Status Canvas::Blt(size_t x, size_t y, CanvasView other) {
+  if (x >= width_ || y >= height_) {
+    return absl::InvalidArgumentError("Destination exceeds canvas boundaries");
+  }
+  size_t y_end = SaturatingAdd(y, other.height(), height_);
+  size_t x_end = SaturatingAdd(x, other.width(), width_);
+  for (size_t i = y; i < y_end; i++) {
+    for (size_t j = x; j < x_end; j++) {
+      SetPixel(j, i, other.GetPixel(j - x, i - y));
+    }
+  }
+  return absl::OkStatus();
+}
+
 absl::StatusOr<ExportedCanvasBuffer> Canvas::ExportAsPNG() const {
   spng_ctx* ctx = spng_ctx_new(SPNG_CTX_ENCODER);
   spng_set_option(ctx, SPNG_ENCODE_TO_BUFFER, 1);
@@ -95,6 +111,15 @@ absl::StatusOr<ExportedCanvasBuffer> Canvas::ExportAsPNG() const {
   }
   spng_ctx_free(ctx);
   return ExportedCanvasBuffer(png_data, png_size);
+}
+
+absl::StatusOr<CanvasView> Canvas::Sub(size_t x, size_t y, size_t w, size_t h) const {
+  if (x >= width_ || y >= height_) {
+    return absl::InvalidArgumentError("Subcanvas exceeds canvas boundaries");
+  }
+  w = std::min(w, width_ - x);
+  h = std::min(h, height_ - y);
+  return CanvasView(*this, x, y, w, h);
 }
 
 }  // namespace hitori

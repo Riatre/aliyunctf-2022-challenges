@@ -6,7 +6,6 @@ cc_binary(
         ":canvas",
         ":plugin",
         "@com_google_absl//absl/log:check",
-        "@com_google_absl//absl/status",
         "@com_google_absl//absl/strings",
         "@fmt",
     ],
@@ -18,6 +17,7 @@ cc_library(
     hdrs = ["canvas.h"],
     deps = [
         "@com_github_randy408_libspng//:spng",
+        "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
     ],

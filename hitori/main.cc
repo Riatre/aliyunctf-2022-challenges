@@ -39,7 +39,7 @@ void PrintPrompt() {
       "1. New Empty Canvas\n"
       "2. Resize Canvas\n"
       "3. Show Canvas\n"
-      "4. Draw on Canvas\n"  // TODO
+      "4. Draw on Canvas\n"
       "5. Remove Canvas\n"
       "6. Load Filter Plugin\n"    // TODO
       "7. Apply Filter\n"          // TODO
@@ -174,7 +174,7 @@ void ResizeCanvas() {
 
 void ShowCanvas() {
   size_t index = ReadULongOrExit("Index: ");
-  if (index > kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
+  if (index >= kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
     puts("Invalid canvas index.");
     return;
   }
@@ -184,17 +184,14 @@ void ShowCanvas() {
     return;
   }
   auto png_result = canvas->ExportAsPNG();
-  if (!png_result.ok()) {
-    fmt::print("Failed to encode: {}\n", png_result.status().message());
-    return;
-  }
+  EAT_AND_RETURN_IF_ERROR(png_result.status());
   fmt::print("\n\033]1337;File=inline=1;width={}px;height={}px;size={}:{}\07\n", canvas->width(),
              canvas->height(), png_result->size(), absl::Base64Escape(*png_result));
 }
 
 void DrawCanvasMenu() {
   size_t index = ReadULongOrExit("Index: ");
-  if (index > kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
+  if (index >= kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
     puts("Invalid canvas index.");
     return;
   }
@@ -221,7 +218,18 @@ void DrawCanvasMenu() {
       break;
     }
     case 3: {
-      throw std::logic_error("not implemented");
+      size_t src_index = ReadULongOrExit("Source Canvas Index: ");
+      if (src_index >= kMaxCanvasCount || !g_canvas[src_index] || !g_canvas[src_index]->Valid()) {
+        puts("Invalid canvas index.");
+        return;
+      }
+      size_t src_x = ReadULongOrExit("Source X: ");
+      size_t src_y = ReadULongOrExit("Source Y: ");
+      size_t src_w = ReadULongOrExit("Source Width: ");
+      size_t src_h = ReadULongOrExit("Source Height: ");
+      auto src_view = g_canvas[src_index]->Sub(src_x, src_y, src_w, src_h);
+      EAT_AND_RETURN_IF_ERROR(src_view.status());
+      EAT_AND_RETURN_IF_ERROR(canvas->Blt(x, y, *src_view));
       break;
     }
     default:
@@ -232,7 +240,7 @@ void DrawCanvasMenu() {
 
 void RemoveCanvas() {
   size_t index = ReadULongOrExit("Index: ");
-  if (index > kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
+  if (index >= kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
     puts("Invalid canvas index.");
     return;
   }

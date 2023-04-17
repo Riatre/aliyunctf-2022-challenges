@@ -41,7 +41,7 @@ class Canvas {
  public:
   Canvas();
   Canvas(size_t width, size_t height);
-  ~Canvas() { delete[] data_; }
+  ~Canvas();
   bool Valid() const { return data_ != nullptr; }
   size_t width() const { return width_; }
   size_t height() const { return height_; }
@@ -53,6 +53,14 @@ class Canvas {
   absl::Status DrawSolidCircle(size_t x, size_t y, size_t radius, pixel_t color);
   absl::Status Blt(size_t x, size_t y, CanvasView other);
   absl::StatusOr<ExportedCanvasBuffer> ExportAsPNG() const;
+  pixel_t GetPixel(size_t x, size_t y) const {
+    return {data_[y * width_ * kChannels + x * kChannels + 0],
+            data_[y * width_ * kChannels + x * kChannels + 1],
+            data_[y * width_ * kChannels + x * kChannels + 2]};
+    // return {data_[0 * width_ * height_ + y * width_ + x],
+    //         data_[1 * width_ * height_ + y * width_ + x],
+    //         data_[2 * width_ * height_ + y * width_ + x]};
+  }
   void SetPixel(size_t x, size_t y, pixel_t px) {
     data_[y * width_ * kChannels + x * kChannels + 0] = std::get<0>(px);
     data_[y * width_ * kChannels + x * kChannels + 1] = std::get<1>(px);
@@ -61,6 +69,8 @@ class Canvas {
     // data_[1 * width_ * height_ + y * width_ + x] = std::get<1>(px);
     // data_[2 * width_ * height_ + y * width_ + x] = std::get<2>(px);
   }
+  absl::StatusOr<CanvasView> Sub(size_t x, size_t y, size_t w = std::string::npos,
+                                 size_t h = std::string::npos) const;
 
  private:
   size_t width_;
@@ -71,7 +81,20 @@ class Canvas {
 };
 
 class CanvasView {
-  // ...
+ public:
+  CanvasView(const Canvas& canvas, size_t x, size_t y, size_t w, size_t h)
+      : canvas_(&canvas), x_(x), y_(y), w_(w), h_(h) {}
+  CanvasView(const Canvas& canvas) : CanvasView(canvas, 0, 0, canvas.width(), canvas.height()) {}
+  size_t width() const { return w_; }
+  size_t height() const { return h_; }
+  pixel_t GetPixel(size_t x, size_t y) const { return canvas_->GetPixel(x_ + x, y_ + y); }
+
+ private:
+  const Canvas* canvas_;
+  size_t x_;
+  size_t y_;
+  size_t w_;
+  size_t h_;
 };
 
 }  // namespace hitori
