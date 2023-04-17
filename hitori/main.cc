@@ -12,7 +12,7 @@
 #include "absl/strings/escaping.h"
 #include "canvas.h"
 #include "fmt/core.h"
-#include "plugin.h"
+#include "plugin_manager.h"
 
 #define EAT_AND_RETURN_IF_ERROR(expr)                  \
   do {                                                 \
@@ -42,9 +42,9 @@ void PrintPrompt() {
       "3. Show Canvas\n"
       "4. Draw on Canvas\n"
       "5. Remove Canvas\n"
-      "6. Load Filter Plugin\n"    // TODO
-      "7. Apply Filter\n"          // TODO
-      "8. Unload Filter Plugin\n"  // TODO
+      "6. Load Filter Plugin\n"
+      "7. Apply Filter\n"
+      "8. Unload Filter Plugin\n"
       "> ");
 }
 
@@ -116,6 +116,7 @@ std::optional<hitori::pixel_t> ReadRGB() {
     }
     if (!eof) printf("RGB Color, guys! RGB Color! Try again: ");
   }
+  return {};
 }
 
 hitori::pixel_t ReadRGBOrExit(const char* prompt = nullptr) {
@@ -131,15 +132,23 @@ hitori::pixel_t ReadRGBOrExit(const char* prompt = nullptr) {
 constexpr size_t kMaxHeight = 1024;
 constexpr size_t kMaxWidth = 1024;
 constexpr size_t kMaxCanvasCount = 16;
-constexpr size_t kMaxPluginSlot = 4;
+constexpr size_t kMaxPluginSlot = 2;
 hitori::Canvas* g_canvas[kMaxCanvasCount];
-hitori::Plugin* g_plugin_slot[kMaxPluginSlot];
+hitori::PluginHolder g_plugin_slot[kMaxPluginSlot];
+
+bool FindEmptyCanvasSlot(size_t* cid) {
+  for (size_t i = 0; i < kMaxCanvasCount; i++) {
+    if (!g_canvas[i]) {
+      *cid = i;
+      return true;
+    }
+  }
+  return false;
+}
 
 void LoadExampleImage() {
   size_t cid = 0;
-  for (; cid < kMaxCanvasCount && g_canvas[cid]; cid++)
-    ;
-  if (cid == kMaxCanvasCount) {
+  if (!FindEmptyCanvasSlot(&cid)) {
     puts("Maximum canvas count exceeded.");
     return;
   }
@@ -169,9 +178,7 @@ void LoadExampleImage() {
 
 void NewCanvas() {
   size_t cid = 0;
-  for (; cid < kMaxCanvasCount && g_canvas[cid]; cid++)
-    ;
-  if (cid == kMaxCanvasCount) {
+  if (!FindEmptyCanvasSlot(&cid)) {
     puts("Maximum canvas count exceeded.");
     return;
   }
@@ -199,6 +206,10 @@ void ResizeCanvas() {
   }
   ulong width = ReadULongOrExit("New width: ");
   ulong height = ReadULongOrExit("New height: ");
+  if (width == 0 || width > kMaxWidth || height == 0 || height > kMaxHeight) {
+    puts("Invalid dimension.");
+    return;
+  }
   EAT_AND_RETURN_IF_ERROR(g_canvas[index]->Resize(width, height));
   fmt::print("Canvas resized to {} x {}.\n", width, height);
 }
@@ -280,11 +291,73 @@ void RemoveCanvas() {
   fmt::print("Canvas {} removed.\n", index);
 }
 
-void LoadPlugin() { throw std::logic_error("not implemented"); }
+void LoadPlugin() {
+  size_t slot_id = 0;
+  for (; slot_id < kMaxPluginSlot; ++slot_id) {
+    if (!g_plugin_slot[slot_id]) break;
+  }
+  if (slot_id == kMaxPluginSlot) {
+    puts("No more plugin slot.");
+    return;
+  }
 
-void ApplyPlugin() { throw std::logic_error("not implemented"); }
+  char namebuf[256];
+  printf("Plugin name: ");
+  size_t namelen = ReadNUntil(namebuf, sizeof(namebuf), '\n');
+  std::string_view name(namebuf, namelen);
+  auto so_path = fmt::format("plugins/{}.so", name);
+  if (!std::filesystem::exists(so_path)) {
+    fmt::print("Plugin {} not found.\n", name);
+    return;
+  }
+  auto result = hitori::LoadPlugin(so_path);
+  EAT_AND_RETURN_IF_ERROR(result.status());
+  g_plugin_slot[slot_id] = std::move(result.value());
+  fmt::print("Plugin {} ({}) loaded to slot #{}.\n{}\n", g_plugin_slot[slot_id]->Name(), so_path,
+             slot_id, g_plugin_slot[slot_id]->Description());
+}
 
-void UnloadPlugin() { throw std::logic_error("not implemented"); }
+void ApplyPlugin() {
+  size_t index = ReadULongOrExit("Plugin Index: ");
+  if (index >= kMaxPluginSlot || !g_plugin_slot[index]) {
+    puts("Invalid plugin slot.");
+    return;
+  }
+  hitori::Plugin& plugin = *g_plugin_slot[index];
+  size_t cid;
+  switch (plugin.Type()) {
+    case hitori::PluginType::FILTER_PLUGIN:
+      cid = ReadULongOrExit("Canvas Index: ");
+      if (cid >= kMaxCanvasCount || !g_canvas[cid] || !g_canvas[cid]->Valid()) {
+        puts("Invalid canvas index.");
+        return;
+      }
+      break;
+
+    case hitori::PluginType::GENERATIVE_PLUGIN:
+      if (!FindEmptyCanvasSlot(&cid)) {
+        puts("Maximum canvas count exceeded.");
+        return;
+      }
+      g_canvas[cid] = new hitori::Canvas();
+      break;
+
+    default:
+      puts("Unknown plugin type.");
+      return;
+  }
+  EAT_AND_RETURN_IF_ERROR(plugin.Apply(*g_canvas[cid]));
+  fmt::print("Plugin {} applied to canvas #{}.", g_plugin_slot[index]->Name(), cid);
+}
+
+void UnloadPlugin() {
+  size_t index = ReadULongOrExit("Index: ");
+  if (index >= kMaxPluginSlot || !g_plugin_slot[index]) {
+    puts("Invalid plugin slot.");
+    return;
+  }
+  g_plugin_slot[index].reset();
+}
 
 }  // namespace
 

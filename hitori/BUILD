@@ -1,15 +1,15 @@
 cc_binary(
     name = "hitori",
     srcs = ["main.cc"],
+    data = glob(["assets/*.png"]),
     features = ["static_libstdcxx"],
     deps = [
         ":canvas",
-        ":plugin",
+        ":plugin_manager",
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/strings",
         "@fmt",
     ],
-    data = glob(["assets/*.png"]),
 )
 
 cc_library(
@@ -28,4 +28,19 @@ cc_library(
 cc_library(
     name = "plugin",
     hdrs = ["plugin.h"],
+    deps = [
+        ":canvas",
+        "@com_google_absl//absl/status",
+    ],
+)
+
+cc_library(
+    name = "plugin_manager",
+    srcs = ["plugin_manager.cc"],
+    hdrs = ["plugin_manager.h"],
+    linkopts = ["-ldl"],
+    deps = [
+        ":plugin",
+        "@com_google_absl//absl/status:statusor",
+    ],
 )
