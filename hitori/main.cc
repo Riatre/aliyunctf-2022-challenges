@@ -13,6 +13,15 @@
 #include "fmt/core.h"
 #include "plugin.h"
 
+#define EAT_AND_RETURN_IF_ERROR(expr)                  \
+  do {                                                 \
+    auto _status = (expr);                             \
+    if (!_status.ok()) {                               \
+      fmt::print("Failure: {}\n", _status.ToString()); \
+      return;                                          \
+    }                                                  \
+  } while (0)
+
 namespace {
 
 void PrintBanner() {
@@ -25,18 +34,17 @@ void PrintBanner() {
 }
 
 void PrintPrompt() {
-  puts("0. Load Example Image");  // TODO
-  puts("1. New Empty Canvas");    // DONE
-  puts("2. Resize Canvas");       // DONE
-  puts("3. Show Canvas");         // DONE
-  // 4.1. Draw Solid Rectangle; 4.2. Draw Solid Circle; 4.3. Blt subarea of
-  // another Canvas
-  puts("4. Draw on Canvas");        // TODO
-  puts("5. Remove Canvas");         // DONE
-  puts("6. Load Filter Plugin");    // TODO
-  puts("7. Apply Filter");          // TODO
-  puts("8. Unload Filter Plugin");  // TODO
-  printf("> ");
+  printf(
+      "0. Load Example Image\n"  // TODO
+      "1. New Empty Canvas\n"
+      "2. Resize Canvas\n"
+      "3. Show Canvas\n"
+      "4. Draw on Canvas\n"  // TODO
+      "5. Remove Canvas\n"
+      "6. Load Filter Plugin\n"    // TODO
+      "7. Apply Filter\n"          // TODO
+      "8. Unload Filter Plugin\n"  // TODO
+      "> ");
 }
 
 ssize_t ReadN(void* buf, ssize_t size) {
@@ -75,7 +83,7 @@ std::optional<ulong> ReadULong() {
     char* endptr = nullptr;
     ulong ret = strtoul(buf, &endptr, 0);
     if (endptr != buf) return ret;
-    printf("Integer, man! Integer! Try again: ");
+    if (!eof) printf("Integer, man! Integer! Try again: ");
   }
   return {};
 }
@@ -85,6 +93,35 @@ ulong ReadULongOrExit(const char* prompt = nullptr) {
     printf("%s", prompt);
   }
   if (auto ret = ReadULong(); ret.has_value()) {
+    return *ret;
+  }
+  exit(0);
+}
+
+std::optional<hitori::pixel_t> ParseRGB(std::string_view inp) {
+  if (inp.size() != 7 || inp[0] != '#') return {};
+  uint32_t parsed = 0;
+  if (!absl::SimpleHexAtoi(inp.substr(1), &parsed)) return {};
+  return hitori::pixel_t{(parsed >> 16) & 0xff, (parsed >> 8) & 0xff, parsed & 0xff};
+}
+
+std::optional<hitori::pixel_t> ReadRGB() {
+  char buf[32];
+  bool eof = false;
+  while (!eof) {
+    ReadNUntil(buf, sizeof(buf), '\n', &eof);
+    if (auto val = ParseRGB(buf); val.has_value()) {
+      return *val;
+    }
+    if (!eof) printf("RGB Color, guys! RGB Color! Try again: ");
+  }
+}
+
+hitori::pixel_t ReadRGBOrExit(const char* prompt = nullptr) {
+  if (prompt) {
+    printf("%s", prompt);
+  }
+  if (auto ret = ReadRGB(); ret.has_value()) {
     return *ret;
   }
   exit(0);
@@ -131,11 +168,7 @@ void ResizeCanvas() {
   }
   ulong width = ReadULongOrExit("New width: ");
   ulong height = ReadULongOrExit("New height: ");
-  auto status = g_canvas[index]->Resize(width, height);
-  if (!status.ok()) {
-    fmt::print("Failed to resize canvas: {}\n", status.message());
-    return;
-  }
+  EAT_AND_RETURN_IF_ERROR(g_canvas[index]->Resize(width, height));
   fmt::print("Canvas resized to {} x {}.\n", width, height);
 }
 
@@ -160,11 +193,41 @@ void ShowCanvas() {
 }
 
 void DrawCanvasMenu() {
-  puts("1. Draw Solid Rectangle");
-  puts("2. Draw Solid Circle");
-  puts("3. Blt subarea of another Canvas");
-  printf("> ");
-  throw std::logic_error("not implemented");
+  size_t index = ReadULongOrExit("Index: ");
+  if (index > kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
+    puts("Invalid canvas index.");
+    return;
+  }
+  size_t choice = ReadULongOrExit(
+      "1. Draw Solid Rectangle\n"
+      "2. Draw Solid Circle\n"
+      "3. Blt subarea of another Canvas\n"
+      "> ");
+  size_t x = ReadULongOrExit("X: ");
+  size_t y = ReadULongOrExit("Y: ");
+  hitori::Canvas* canvas = g_canvas[index];
+  switch (choice) {
+    case 1: {
+      size_t w = ReadULongOrExit("Width: ");
+      size_t h = ReadULongOrExit("Height: ");
+      hitori::pixel_t color = ReadRGBOrExit("Color: ");
+      EAT_AND_RETURN_IF_ERROR(canvas->DrawSolidRectangle(x, y, w, h, color));
+      break;
+    }
+    case 2: {
+      size_t r = ReadULongOrExit("Radius: ");
+      hitori::pixel_t color = ReadRGBOrExit("Color: ");
+      EAT_AND_RETURN_IF_ERROR(canvas->DrawSolidCircle(x, y, r, color));
+      break;
+    }
+    case 3: {
+      throw std::logic_error("not implemented");
+      break;
+    }
+    default:
+      puts("?");
+      return;
+  }
 }
 
 void RemoveCanvas() {

@@ -4,6 +4,17 @@
 
 #include "spng.h"
 
+namespace {
+
+template <typename T>
+constexpr T SaturatingAdd(T a, T b, T maxv = std::numeric_limits<T>::max()) {
+  static_assert(std::is_unsigned_v<T>);
+  T result;
+  return (__builtin_add_overflow(a, b, &result) || result > maxv) ? maxv : result;
+}
+
+}  // namespace
+
 namespace hitori {
 
 Canvas::Canvas() : width_(0), height_(0), data_(nullptr) {}
@@ -13,8 +24,8 @@ Canvas::Canvas(size_t width, size_t height) : width_(width), height_(height) {
       __builtin_mul_overflow(kChannels, alloc_size, &alloc_size)) {
     throw std::bad_alloc();
   }
-  data_ = new color_t[kChannels * width_ * height_];
-  std::fill(data_, data_ + kChannels * width_ * height_, 255);
+  data_ = new color_t[alloc_size];
+  std::fill(data_, data_ + alloc_size, 255);
 }
 
 absl::Status Canvas::Resize(size_t width, size_t height) {
@@ -29,7 +40,39 @@ absl::Status Canvas::Resize(size_t width, size_t height) {
   delete[] data_;
   width_ = width;
   height_ = height;
-  data_ = new color_t[kChannels * width_ * height_];
+  data_ = new color_t[alloc_size];
+  return absl::OkStatus();
+}
+
+absl::Status Canvas::DrawSolidRectangle(size_t x, size_t y, size_t w, size_t h, pixel_t px) {
+  if (x >= width_ || y >= height_) {
+    return absl::InvalidArgumentError("Rectangle exceeds canvas boundaries");
+  }
+  size_t y_end = SaturatingAdd(y, h, height_);
+  size_t x_end = SaturatingAdd(x, w, width_);
+  for (size_t i = y; i < y_end; i++) {
+    for (size_t j = x; j < x_end; j++) {
+      SetPixel(j, i, px);
+    }
+  }
+  return absl::OkStatus();
+}
+
+absl::Status Canvas::DrawSolidCircle(size_t x, size_t y, size_t radius, pixel_t color) {
+  if (x >= width_ || y >= height_) {
+    return absl::InvalidArgumentError("Circle center exceeds canvas boundaries");
+  }
+  size_t y_start = (y >= radius) ? y - radius : 0;
+  size_t y_end = SaturatingAdd(y, radius, height_);
+  size_t x_start = (x >= radius) ? x - radius : 0;
+  size_t x_end = SaturatingAdd(x, radius, width_);
+  for (size_t i = y_start; i < y_end; i++) {
+    for (size_t j = x_start; j < x_end; j++) {
+      if ((i - y) * (i - y) + (j - x) * (j - x) <= radius * radius) {
+        SetPixel(j, i, color);
+      }
+    }
+  }
   return absl::OkStatus();
 }
 
