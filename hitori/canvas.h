@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_view>
+#include <filesystem>
 
 #include "absl/status/status.h"
 #include "absl/status/statusor.h"
@@ -42,6 +43,11 @@ class Canvas {
   Canvas();
   Canvas(size_t width, size_t height);
   ~Canvas();
+  Canvas(const Canvas&) = delete;
+  Canvas& operator=(const Canvas&) = delete;
+  Canvas(Canvas&&);
+  Canvas& operator=(Canvas&&);
+
   bool Valid() const { return data_ != nullptr; }
   size_t width() const { return width_; }
   size_t height() const { return height_; }
@@ -53,6 +59,7 @@ class Canvas {
   absl::Status DrawSolidCircle(size_t x, size_t y, size_t radius, pixel_t color);
   absl::Status Blt(size_t x, size_t y, CanvasView other);
   absl::StatusOr<ExportedCanvasBuffer> ExportAsPNG() const;
+  static absl::StatusOr<Canvas> FromPNG(const std::filesystem::path& path);
   pixel_t GetPixel(size_t x, size_t y) const {
     return {data_[y * width_ * kChannels + x * kChannels + 0],
             data_[y * width_ * kChannels + x * kChannels + 1],

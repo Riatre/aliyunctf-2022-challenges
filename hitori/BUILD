@@ -9,6 +9,7 @@ cc_binary(
         "@com_google_absl//absl/strings",
         "@fmt",
     ],
+    data = glob(["assets/*.png"]),
 )
 
 cc_library(
@@ -20,6 +21,7 @@ cc_library(
         "@com_google_absl//absl/log:check",
         "@com_google_absl//absl/status",
         "@com_google_absl//absl/status:statusor",
+        "@fmt",
     ],
 )
 

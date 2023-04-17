@@ -1,8 +1,10 @@
 #include "canvas.h"
 
 #include <algorithm>
+#include <fstream>
 
 #include "absl/log/check.h"
+#include "fmt/core.h"
 #include "spng.h"
 
 namespace {
@@ -13,6 +15,12 @@ constexpr T SaturatingAdd(T a, T b, T maxv = std::numeric_limits<T>::max()) {
   T result;
   return (__builtin_add_overflow(a, b, &result) || result > maxv) ? maxv : result;
 }
+
+struct SPNGContextDeleter {
+  void operator()(spng_ctx* ctx) const { spng_ctx_free(ctx); }
+};
+
+using SPNGContext = std::unique_ptr<spng_ctx, SPNGContextDeleter>;
 
 }  // namespace
 
@@ -28,7 +36,56 @@ Canvas::Canvas(size_t width, size_t height) : width_(width), height_(height) {
   data_ = new color_t[alloc_size];
   std::fill(data_, data_ + alloc_size, 255);
 }
-Canvas::~Canvas() { delete[] data_; }
+Canvas::~Canvas() {
+  if (data_) delete[] data_;
+}
+
+Canvas::Canvas(Canvas&& other) : width_(other.width_), height_(other.height_), data_(other.data_) {
+  other.width_ = 0;
+  other.height_ = 0;
+  other.data_ = nullptr;
+}
+
+Canvas& Canvas::operator=(Canvas&& other) {
+  if (data_) delete[] data_;
+  width_ = other.width_;
+  height_ = other.height_;
+  data_ = other.data_;
+  other.width_ = 0;
+  other.height_ = 0;
+  other.data_ = nullptr;
+  return *this;
+}
+
+absl::StatusOr<Canvas> Canvas::FromPNG(const std::filesystem::path& path) {
+  std::ifstream file(path, std::ios::binary | std::ios::ate);
+  if (!file.is_open()) {
+    return absl::NotFoundError(fmt::format("Failed to open file: {}", path.string()));
+  }
+  std::streamsize size = file.tellg();
+  file.seekg(0, std::ios::beg);
+  std::vector<uint8_t> buffer(size);
+  if (!file.read(reinterpret_cast<char*>(buffer.data()), size)) {
+    return absl::InternalError(fmt::format("Failed to read file: {}", path.string()));
+  }
+
+  SPNGContext ctx(spng_ctx_new(0));
+  spng_set_png_buffer(ctx.get(), buffer.data(), size);
+  spng_ihdr png_header;
+  if (spng_get_ihdr(ctx.get(), &png_header) != 0) {
+    return absl::InternalError("Failed to read PNG header");
+  }
+  size_t decoded_len = 0;
+  spng_decoded_image_size(ctx.get(), SPNG_FMT_RGB8, &decoded_len);
+  Canvas canvas(png_header.width, png_header.height);
+  if (decoded_len != canvas.ByteSize()) {
+    return absl::InternalError("libspng is insane");
+  }
+  if (spng_decode_image(ctx.get(), canvas.data(), canvas.ByteSize(), SPNG_FMT_RGB8, 0) != 0) {
+    return absl::InternalError("Failed to decode PNG image");
+  }
+  return canvas;
+}
 
 absl::Status Canvas::Resize(size_t width, size_t height) {
   size_t alloc_size = 0;
@@ -93,23 +150,22 @@ absl::Status Canvas::Blt(size_t x, size_t y, CanvasView other) {
 }
 
 absl::StatusOr<ExportedCanvasBuffer> Canvas::ExportAsPNG() const {
-  spng_ctx* ctx = spng_ctx_new(SPNG_CTX_ENCODER);
-  spng_set_option(ctx, SPNG_ENCODE_TO_BUFFER, 1);
+  SPNGContext ctx(spng_ctx_new(SPNG_CTX_ENCODER));
+  spng_set_option(ctx.get(), SPNG_ENCODE_TO_BUFFER, 1);
   spng_ihdr ihdr = {
       .width = static_cast<uint32_t>(width_),
       .height = static_cast<uint32_t>(height_),
       .bit_depth = 8,
       .color_type = SPNG_COLOR_TYPE_TRUECOLOR,
   };
-  spng_set_ihdr(ctx, &ihdr);
-  spng_encode_image(ctx, data_, ByteSize(), SPNG_FMT_PNG, SPNG_ENCODE_FINALIZE);
+  spng_set_ihdr(ctx.get(), &ihdr);
+  spng_encode_image(ctx.get(), data_, ByteSize(), SPNG_FMT_PNG, SPNG_ENCODE_FINALIZE);
   size_t png_size;
   int error;
-  void* png_data = spng_get_png_buffer(ctx, &png_size, &error);
+  void* png_data = spng_get_png_buffer(ctx.get(), &png_size, &error);
   if (!png_data) {
     return absl::InternalError(spng_strerror(error));
   }
-  spng_ctx_free(ctx);
   return ExportedCanvasBuffer(png_data, png_size);
 }
 

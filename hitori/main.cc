@@ -4,8 +4,9 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <filesystem>
 #include <optional>
-#include <stdexcept>
+#include <random>
 
 #include "absl/log/check.h"
 #include "absl/strings/escaping.h"
@@ -35,7 +36,7 @@ void PrintBanner() {
 
 void PrintPrompt() {
   printf(
-      "0. Load Example Image\n"  // TODO
+      "0. Load Example Image\n"
       "1. New Empty Canvas\n"
       "2. Resize Canvas\n"
       "3. Show Canvas\n"
@@ -134,7 +135,37 @@ constexpr size_t kMaxPluginSlot = 4;
 hitori::Canvas* g_canvas[kMaxCanvasCount];
 hitori::Plugin* g_plugin_slot[kMaxPluginSlot];
 
-void LoadExampleImage() { throw std::logic_error("not implemented"); }
+void LoadExampleImage() {
+  size_t cid = 0;
+  for (; cid < kMaxCanvasCount && g_canvas[cid]; cid++)
+    ;
+  if (cid == kMaxCanvasCount) {
+    puts("Maximum canvas count exceeded.");
+    return;
+  }
+  if (!std::filesystem::is_directory("assets")) {
+    puts("No example image found.");
+    return;
+  }
+  std::vector<std::filesystem::path> candidates;
+  for (const auto& entry : std::filesystem::directory_iterator("assets")) {
+    if (!entry.is_regular_file()) continue;
+    if (entry.path().extension() != ".png") continue;
+    candidates.push_back(entry.path());
+  }
+  if (candidates.empty()) {
+    puts("No example image found.");
+    return;
+  }
+  // Choose a random image.
+  std::random_device rng;
+  size_t idx = std::uniform_int_distribution<size_t>(0, candidates.size() - 1)(rng);
+  auto result = hitori::Canvas::FromPNG(candidates[idx]);
+  EAT_AND_RETURN_IF_ERROR(result.status());
+  g_canvas[cid] = new hitori::Canvas();
+  *g_canvas[cid] = std::move(result.value());
+  fmt::print("Loaded {} to canvas #{}.\n", candidates[idx].stem().string(), cid);
+}
 
 void NewCanvas() {
   size_t cid = 0;
@@ -153,7 +184,7 @@ void NewCanvas() {
   }
   g_canvas[cid] = new hitori::Canvas(width, height);
   CHECK(g_canvas[cid]->Valid());
-  fmt::print("New canvas created with size {} x {}.\n", width, height);
+  fmt::print("Canvas #{} created with size {} x {}.\n", cid, width, height);
 }
 
 void ResizeCanvas() {
