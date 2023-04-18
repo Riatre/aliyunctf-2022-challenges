@@ -48,18 +48,6 @@ void PrintPrompt() {
       "> ");
 }
 
-ssize_t ReadN(void* buf, ssize_t size) {
-  ssize_t i = 0;
-  while (i < size) {
-    ssize_t ret = read(0, reinterpret_cast<char*>(buf) + i, size - i);
-    if (ret == -1) {
-      break;
-    }
-    i += ret;
-  }
-  return i;
-}
-
 size_t ReadNUntil(void* buf, size_t size, char delim, bool* eof = nullptr) {
   size_t i = 0;
   while (i + 1 < size) {
