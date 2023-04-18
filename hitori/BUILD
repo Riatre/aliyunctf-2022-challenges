@@ -1,7 +1,7 @@
 cc_binary(
     name = "hitori",
     srcs = ["main.cc"],
-    data = glob(["assets/*.png"]),
+    data = glob(["assets/*.png"]) + ["//plugins"],
     features = ["static_libstdcxx"],
     deps = [
         ":canvas",
@@ -32,6 +32,7 @@ cc_library(
         ":canvas",
         "@com_google_absl//absl/status",
     ],
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
