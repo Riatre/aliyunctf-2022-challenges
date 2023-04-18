@@ -1,7 +1,19 @@
+load("@rules_pkg//pkg:tar.bzl", "pkg_tar")
+load("@rules_pkg//pkg:mappings.bzl", "pkg_attributes", "pkg_filegroup", "pkg_files")
+load("@bazel_skylib//rules:write_file.bzl", "write_file")
+
+exports_files([
+    "Dockerfile",
+    "docker-compose.yaml",
+])
+
 cc_binary(
     name = "hitori",
     srcs = ["main.cc"],
-    data = glob(["assets/*.png"]) + ["//plugins"],
+    data = [
+        "//assets:example_images",
+        "//plugins",
+    ],
     features = ["static_libstdcxx"],
     deps = [
         ":canvas",
@@ -28,11 +40,11 @@ cc_library(
 cc_library(
     name = "plugin",
     hdrs = ["plugin.h"],
+    visibility = ["//visibility:public"],
     deps = [
         ":canvas",
         "@com_google_absl//absl/status",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -44,4 +56,71 @@ cc_library(
         ":plugin",
         "@com_google_absl//absl/status:statusor",
     ],
+)
+
+pkg_files(
+    name = "pkg_binary",
+    srcs = [
+        ":hitori.stripped",
+    ],
+    attributes = pkg_attributes(
+        mode = "0755",
+    ),
+    renames = {
+        "hitori.stripped": "hitori",
+    },
+)
+
+pkg_files(
+    name = "pkg_source",
+    srcs = glob([
+        "*.cc",
+        "*.h",
+    ]) + [
+        ".bazelrc",
+        ".bazelversion",
+        ".clang-format",
+        "BUILD",
+        "WORKSPACE",
+    ],
+)
+
+pkg_filegroup(
+    name = "pkg_binary_with_runfiles",
+    srcs = [
+        ":pkg_binary",
+        "//assets:pkg",
+        "//plugins:pkg_binary",
+    ],
+    prefix = "bin/",
+)
+
+pkg_filegroup(
+    name = "pkg_source_handout",
+    srcs = [
+        ":pkg_source",
+        "//assets:pkg",
+        "//plugins:pkg_source",
+    ],
+    prefix = "src/",
+    visibility = ["//visibility:public"],
+)
+
+write_file(
+    name = "local_test_flag",
+    out = "flag",
+    content = ["aliyunctf{real_flag_on_server}"],
+)
+
+pkg_tar(
+    name = "handout",
+    srcs = [
+        "Dockerfile",
+        "docker-compose.yaml",
+        ":local_test_flag",
+        ":pkg_binary_with_runfiles",
+        ":pkg_source_handout",
+    ],
+    extension = ".tar.gz",
+    visibility = ["//visibility:public"],
 )

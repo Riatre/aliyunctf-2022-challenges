@@ -1,3 +1,4 @@
+load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
@@ -89,4 +90,16 @@ cc_library(
     name = "f",
     srcs = ["f.cc"],
     hdrs = ["f.h"],
+)
+
+pkg_files(
+    name = "pkg_binary",
+    srcs = [":plugins"],
+    prefix = "plugins/",
+)
+
+pkg_files(
+    name = "pkg_source",
+    srcs = glob(["**/*.h", "**/*.cc"]) + ["BUILD"],
+    prefix = "plugins/"
 )
