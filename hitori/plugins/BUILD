@@ -1,4 +1,5 @@
 load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
+
 package(default_visibility = ["//visibility:public"])
 
 filegroup(
@@ -16,9 +17,9 @@ cc_binary(
     srcs = ["filter_a.cc"],
     linkshared = True,
     deps = [
-        "//:plugin",
         ":a",
         ":d",
+        "//:plugin",
     ],
 )
 
@@ -27,9 +28,9 @@ cc_binary(
     srcs = ["filter_b.cc"],
     linkshared = True,
     deps = [
-        "//:plugin",
         ":b",
         ":e",
+        "//:plugin",
     ],
 )
 
@@ -38,9 +39,9 @@ cc_binary(
     srcs = ["filter_c.cc"],
     linkshared = True,
     deps = [
-        "//:plugin",
         ":c",
         ":f",
+        "//:plugin",
     ],
 )
 
@@ -49,10 +50,10 @@ cc_binary(
     srcs = ["filter_d.cc"],
     linkshared = True,
     deps = [
-        "//:plugin",
         ":d",
         ":e",
         ":f",
+        "//:plugin",
     ],
 )
 
@@ -100,6 +101,9 @@ pkg_files(
 
 pkg_files(
     name = "pkg_source",
-    srcs = glob(["**/*.h", "**/*.cc"]) + ["BUILD"],
-    prefix = "plugins/"
+    srcs = glob([
+        "**/*.h",
+        "**/*.cc",
+    ]) + ["BUILD"],
+    prefix = "plugins/",
 )
