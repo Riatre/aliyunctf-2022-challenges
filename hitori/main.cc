@@ -199,7 +199,7 @@ void ResizeCanvas() {
     return;
   }
   EAT_AND_RETURN_IF_ERROR(g_canvas[index]->Resize(width, height));
-  fmt::print("Canvas resized to {} x {}.\n", width, height);
+  fmt::print("Canvas #{} resized to {} x {}.\n", index, width, height);
 }
 
 void ShowCanvas() {
@@ -208,15 +208,11 @@ void ShowCanvas() {
     puts("Invalid canvas index.");
     return;
   }
-  hitori::Canvas* canvas = g_canvas[index];
-  if (!canvas->Valid()) {
-    puts("Canvas does not exist.");
-    return;
-  }
-  auto png_result = canvas->ExportAsPNG();
+  hitori::Canvas& canvas = *g_canvas[index];
+  auto png_result = canvas.ExportAsPNG();
   EAT_AND_RETURN_IF_ERROR(png_result.status());
-  fmt::print("\n\033]1337;File=inline=1;width={}px;height={}px;size={}:{}\07\n", canvas->width(),
-             canvas->height(), png_result->size(), absl::Base64Escape(*png_result));
+  fmt::print("\n\033]1337;File=inline=1;width={}px;height={}px;size={}:{}\07\n", canvas.width(),
+             canvas.height(), png_result->size(), absl::Base64Escape(*png_result));
 }
 
 void DrawCanvasMenu() {
@@ -270,13 +266,13 @@ void DrawCanvasMenu() {
 
 void RemoveCanvas() {
   size_t index = ReadULongOrExit("Index: ");
-  if (index >= kMaxCanvasCount || !g_canvas[index] || !g_canvas[index]->Valid()) {
+  if (index >= kMaxCanvasCount || !g_canvas[index]) {
     puts("Invalid canvas index.");
     return;
   }
   delete g_canvas[index];
   g_canvas[index] = nullptr;
-  fmt::print("Canvas {} removed.\n", index);
+  fmt::print("Canvas #{} removed.\n", index);
 }
 
 void LoadPlugin() {
@@ -335,7 +331,7 @@ void ApplyPlugin() {
       return;
   }
   EAT_AND_RETURN_IF_ERROR(plugin.Apply(*g_canvas[cid]));
-  fmt::print("Plugin {} applied to canvas #{}.", g_plugin_slot[index]->Name(), cid);
+  fmt::print("Plugin {} applied to canvas #{}.\n", g_plugin_slot[index]->Name(), cid);
 }
 
 void UnloadPlugin() {
@@ -344,7 +340,9 @@ void UnloadPlugin() {
     puts("Invalid plugin slot.");
     return;
   }
+  std::string name = g_plugin_slot[index]->Name();
   g_plugin_slot[index].reset();
+  fmt::print("Plugin {} (slot #{}) unloaded.\n", name, index);
 }
 
 }  // namespace
