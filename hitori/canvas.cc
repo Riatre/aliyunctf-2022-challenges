@@ -96,10 +96,12 @@ absl::Status Canvas::Resize(size_t width, size_t height) {
   if (width_ == width && height_ == height) {
     return absl::OkStatus();
   }
+  color_t* new_data = new color_t[alloc_size];
+  memcpy(new_data, data_, std::min(alloc_size, ByteSize()));
   delete[] data_;
+  data_ = new_data;
   width_ = width;
   height_ = height;
-  data_ = new color_t[alloc_size];
   return absl::OkStatus();
 }
 
