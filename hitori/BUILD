@@ -99,6 +99,7 @@ pkg_filegroup(
     name = "pkg_source_handout",
     srcs = [
         ":pkg_source",
+        "//bazel:pkg",
         "//assets:pkg",
         "//plugins:pkg_source",
     ],
