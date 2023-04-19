@@ -291,6 +291,10 @@ void LoadPlugin() {
   printf("Plugin name: ");
   size_t namelen = ReadNUntil(namebuf, sizeof(namebuf), '\n');
   std::string_view name(namebuf, namelen);
+  if (name.find_first_of('.') != std::string_view::npos ||
+      name.find_first_of('/') != std::string_view::npos) {
+    name = "dQw4w9WgXcQ";
+  }
   auto so_path = fmt::format("plugins/{}.so", name);
   if (!std::filesystem::exists(so_path)) {
     fmt::print("Plugin {} not found.\n", name);
