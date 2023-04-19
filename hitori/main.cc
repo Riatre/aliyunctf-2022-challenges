@@ -211,6 +211,8 @@ void ShowCanvas() {
   hitori::Canvas& canvas = *g_canvas[index];
   auto png_result = canvas.ExportAsPNG();
   EAT_AND_RETURN_IF_ERROR(png_result.status());
+  // Display the image via iTerm2 inline image protocol. It base64 so still counts as plain text
+  // right, right???
   fmt::print("\n\033]1337;File=inline=1;width={}px;height={}px;size={}:{}\07\n", canvas.width(),
              canvas.height(), png_result->size(), absl::Base64Escape(*png_result));
 }

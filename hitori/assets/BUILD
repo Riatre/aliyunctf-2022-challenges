@@ -7,6 +7,14 @@ filegroup(
 )
 
 pkg_files(
+    name = "pkg_handout",
+    srcs = [
+        "README.txt",
+    ],
+    prefix = "assets/",
+)
+
+pkg_files(
     name = "pkg",
     srcs = [
         ":example_images",

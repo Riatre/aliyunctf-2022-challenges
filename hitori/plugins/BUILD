@@ -17,8 +17,8 @@ cc_binary(
     srcs = ["filter_a.cc"],
     linkshared = True,
     deps = [
-        ":a",
         ":d",
+        ":gaussian_blur",
         "//:plugin",
     ],
 )
@@ -28,7 +28,7 @@ cc_binary(
     srcs = ["filter_b.cc"],
     linkshared = True,
     deps = [
-        ":b",
+        ":median_filter",
         ":e",
         "//:plugin",
     ],
@@ -58,15 +58,23 @@ cc_binary(
 )
 
 cc_library(
-    name = "a",
-    srcs = ["a.cc"],
-    hdrs = ["a.h"],
+    name = "gaussian_blur",
+    srcs = ["gaussian_blur.cc"],
+    hdrs = ["gaussian_blur.h"],
+    deps = [
+        ":image_utils",
+        "@mdspan",
+    ],
 )
 
 cc_library(
-    name = "b",
-    srcs = ["b.cc"],
-    hdrs = ["b.h"],
+    name = "median_filter",
+    srcs = ["median_filter.cc"],
+    hdrs = ["median_filter.h"],
+    deps = [
+        ":image_utils",
+        "@mdspan",
+    ],
 )
 
 cc_library(
@@ -91,6 +99,17 @@ cc_library(
     name = "f",
     srcs = ["f.cc"],
     hdrs = ["f.h"],
+)
+
+cc_library(
+    name = "image_utils",
+    srcs = ["image_utils.cc"],
+    hdrs = ["image_utils.h"],
+    deps = [
+        "//:canvas",
+        "@mdspan",
+        "@com_google_absl//absl/log:check",
+    ],
 )
 
 pkg_files(

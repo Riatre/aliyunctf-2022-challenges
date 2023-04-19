@@ -1,4 +1,4 @@
-#include "b.h"
+#include "median_filter.h"
 #include "e.h"
 #include "plugin.h"
 
@@ -11,7 +11,10 @@ class FilterB : public hitori::Plugin {
   std::string Name() const override { return "Filter B"; }
   std::string Description() const override { return "This is a filter plugin."; }
   absl::Status Apply(hitori::Canvas& canvas) const override {
-    hitori::plugins::helpers::LibB::GetInstance().Use();
+    for (size_t c = 0; c < hitori::kChannels; c++) {
+      hitori::plugins::helpers::MedianFilter3x3::GetInstance().Apply(
+          hitori::plugins::helpers::CanvasToMat(canvas, c));
+    }
     hitori::plugins::helpers::LibE::GetInstance().Use();
     return absl::OkStatus();
   }

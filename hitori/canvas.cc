@@ -180,4 +180,10 @@ absl::StatusOr<CanvasView> Canvas::Sub(size_t x, size_t y, size_t w, size_t h) c
   return CanvasView(*this, x, y, w, h);
 }
 
+Canvas Canvas::Clone() const {
+  Canvas clone(width_, height_);
+  memcpy(clone.data_, data_, ByteSize());
+  return clone;
+}
+
 }  // namespace hitori

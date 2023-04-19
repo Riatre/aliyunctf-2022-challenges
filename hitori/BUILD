@@ -35,6 +35,7 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@fmt",
     ],
+    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -86,7 +87,17 @@ pkg_files(
 )
 
 pkg_filegroup(
-    name = "pkg_binary_with_runfiles",
+    name = "pkg_handout_binary",
+    srcs = [
+        ":pkg_binary",
+        "//assets:pkg_handout",
+        "//plugins:pkg_binary",
+    ],
+    prefix = "bin/",
+)
+
+pkg_filegroup(
+    name = "pkg_deploy_binary",
     srcs = [
         ":pkg_binary",
         "//assets:pkg",
@@ -96,11 +107,11 @@ pkg_filegroup(
 )
 
 pkg_filegroup(
-    name = "pkg_source_handout",
+    name = "pkg_handout_source",
     srcs = [
         ":pkg_source",
         "//bazel:pkg",
-        "//assets:pkg",
+        "//assets:pkg_handout",
         "//plugins:pkg_source",
     ],
     prefix = "src/",
@@ -119,8 +130,8 @@ pkg_tar(
         "Dockerfile",
         "docker-compose.yaml",
         ":local_test_flag",
-        ":pkg_binary_with_runfiles",
-        ":pkg_source_handout",
+        ":pkg_handout_binary",
+        ":pkg_handout_source",
     ],
     extension = ".tar.gz",
     visibility = ["//visibility:public"],

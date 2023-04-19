@@ -64,26 +64,20 @@ class Canvas {
     return {data_[y * width_ * kChannels + x * kChannels + 0],
             data_[y * width_ * kChannels + x * kChannels + 1],
             data_[y * width_ * kChannels + x * kChannels + 2]};
-    // return {data_[0 * width_ * height_ + y * width_ + x],
-    //         data_[1 * width_ * height_ + y * width_ + x],
-    //         data_[2 * width_ * height_ + y * width_ + x]};
   }
   void SetPixel(size_t x, size_t y, pixel_t px) {
     data_[y * width_ * kChannels + x * kChannels + 0] = std::get<0>(px);
     data_[y * width_ * kChannels + x * kChannels + 1] = std::get<1>(px);
     data_[y * width_ * kChannels + x * kChannels + 2] = std::get<2>(px);
-    // data_[0 * width_ * height_ + y * width_ + x] = std::get<0>(px);
-    // data_[1 * width_ * height_ + y * width_ + x] = std::get<1>(px);
-    // data_[2 * width_ * height_ + y * width_ + x] = std::get<2>(px);
   }
   absl::StatusOr<CanvasView> Sub(size_t x, size_t y, size_t w = std::string::npos,
                                  size_t h = std::string::npos) const;
+  Canvas Clone() const;
 
  private:
   size_t width_;
   size_t height_;
   // Image data in dense (H, W, C) layout.
-  // TODO(riatre): Do (C, H, W) so it's actually insane, running out of time :(
   color_t* data_;
 };
 
