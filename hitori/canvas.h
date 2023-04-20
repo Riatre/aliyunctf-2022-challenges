@@ -43,8 +43,8 @@ class Canvas {
   Canvas();
   Canvas(size_t width, size_t height);
   ~Canvas();
-  Canvas(const Canvas&) = delete;
-  Canvas& operator=(const Canvas&) = delete;
+  Canvas(const Canvas&);
+  Canvas& operator=(const Canvas&);
   Canvas(Canvas&&);
   Canvas& operator=(Canvas&&);
 
@@ -72,7 +72,6 @@ class Canvas {
   }
   absl::StatusOr<CanvasView> Sub(size_t x, size_t y, size_t w = std::string::npos,
                                  size_t h = std::string::npos) const;
-  Canvas Clone() const;
 
  private:
   size_t width_;

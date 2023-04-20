@@ -27,6 +27,7 @@ using SPNGContext = std::unique_ptr<spng_ctx, SPNGContextDeleter>;
 namespace hitori {
 
 Canvas::Canvas() : width_(0), height_(0), data_(nullptr) {}
+
 Canvas::Canvas(size_t width, size_t height) : width_(width), height_(height) {
   size_t alloc_size = 0;
   if (__builtin_mul_overflow(width, height, &alloc_size) ||
@@ -36,8 +37,20 @@ Canvas::Canvas(size_t width, size_t height) : width_(width), height_(height) {
   data_ = new color_t[alloc_size];
   std::fill(data_, data_ + alloc_size, 255);
 }
+
 Canvas::~Canvas() {
   if (data_) delete[] data_;
+}
+
+Canvas::Canvas(const Canvas& other) : Canvas() { *this = other; }
+
+Canvas& Canvas::operator=(const Canvas& other) {
+  if (data_) delete[] data_;
+  width_ = other.width_;
+  height_ = other.height_;
+  data_ = new color_t[other.ByteSize()];
+  std::copy(other.data_, other.data_ + other.ByteSize(), data_);
+  return *this;
 }
 
 Canvas::Canvas(Canvas&& other) : width_(other.width_), height_(other.height_), data_(other.data_) {
@@ -178,12 +191,6 @@ absl::StatusOr<CanvasView> Canvas::Sub(size_t x, size_t y, size_t w, size_t h) c
   w = std::min(w, width_ - x);
   h = std::min(h, height_ - y);
   return CanvasView(*this, x, y, w, h);
-}
-
-Canvas Canvas::Clone() const {
-  Canvas clone(width_, height_);
-  memcpy(clone.data_, data_, ByteSize());
-  return clone;
 }
 
 }  // namespace hitori

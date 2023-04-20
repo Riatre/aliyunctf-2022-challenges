@@ -19,7 +19,7 @@ class ExtremelyAccessible : public hitori::Plugin {
            "definitely hate this!";
   }
   absl::Status Apply(hitori::Canvas& canvas) const override {
-    auto mask_canvas = canvas.Clone();
+    auto mask_canvas = canvas;
     auto mask = CanvasToMat(mask_canvas, 0);
     MedianFilter3x3::GetInstance().Apply(mask);
     hitori::plugins::EdgeDetector::GetInstance().Apply(mask);

@@ -13,7 +13,6 @@ enum class PluginType : uint32_t {
   GENERATIVE_PLUGIN,
 };
 
-// TODO(riatre): Add a way to apply with parameters.
 class Plugin {
  public:
   virtual ~Plugin() = default;
