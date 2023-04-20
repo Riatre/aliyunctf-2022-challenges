@@ -7,9 +7,18 @@ filegroup(
 )
 
 pkg_files(
-    name = "pkg_handout",
+    name = "pkg_handout_binary",
     srcs = [
         "README.txt",
+    ],
+    prefix = "assets/",
+)
+
+pkg_files(
+    name = "pkg_handout_source",
+    srcs = [
+        "README.txt",
+        "BUILD",
     ],
     prefix = "assets/",
 )

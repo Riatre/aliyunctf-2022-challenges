@@ -90,7 +90,7 @@ pkg_filegroup(
     name = "pkg_handout_binary",
     srcs = [
         ":pkg_binary",
-        "//assets:pkg_handout",
+        "//assets:pkg_handout_binary",
         "//plugins:pkg_binary",
     ],
     prefix = "bin/",
@@ -104,6 +104,7 @@ pkg_filegroup(
         "//plugins:pkg_binary",
     ],
     prefix = "bin/",
+    visibility = ["//visibility:public"],
 )
 
 pkg_filegroup(
@@ -111,7 +112,7 @@ pkg_filegroup(
     srcs = [
         ":pkg_source",
         "//bazel:pkg",
-        "//assets:pkg_handout",
+        "//assets:pkg_handout_source",
         "//plugins:pkg_source",
     ],
     prefix = "src/",

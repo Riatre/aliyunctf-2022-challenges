@@ -17,6 +17,7 @@ pkg_files(
         "prepare.sh",
         "start.sh",
         "stop.sh",
+        "//:pkg_deploy_binary",
         "//:Dockerfile",
         "//:docker-compose.yaml",
     ],
