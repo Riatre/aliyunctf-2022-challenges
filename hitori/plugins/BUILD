@@ -17,7 +17,7 @@ cc_binary(
     srcs = ["filter_a.cc"],
     linkshared = True,
     deps = [
-        ":d",
+        ":color_converter",
         ":gaussian_blur",
         "//:plugin",
     ],
@@ -28,8 +28,8 @@ cc_binary(
     srcs = ["filter_b.cc"],
     linkshared = True,
     deps = [
-        ":median_filter",
         ":e",
+        ":median_filter",
         "//:plugin",
     ],
 )
@@ -39,8 +39,8 @@ cc_binary(
     srcs = ["filter_c.cc"],
     linkshared = True,
     deps = [
-        ":laplacian",
         ":f",
+        ":laplacian",
         "//:plugin",
     ],
 )
@@ -50,7 +50,7 @@ cc_binary(
     srcs = ["filter_d.cc"],
     linkshared = True,
     deps = [
-        ":d",
+        ":color_converter",
         ":e",
         ":f",
         "//:plugin",
@@ -83,13 +83,16 @@ cc_library(
     hdrs = ["laplacian.h"],
     deps = [
         ":image_utils",
-    ]
+    ],
 )
 
 cc_library(
-    name = "d",
-    srcs = ["d.cc"],
-    hdrs = ["d.h"],
+    name = "color_converter",
+    srcs = ["color_converter.cc"],
+    hdrs = ["color_converter.h"],
+    deps = [
+        ":image_utils",
+    ],
 )
 
 cc_library(
@@ -110,8 +113,8 @@ cc_library(
     hdrs = ["image_utils.h"],
     deps = [
         "//:canvas",
-        "@mdspan",
         "@com_google_absl//absl/log:check",
+        "@mdspan",
     ],
 )
 

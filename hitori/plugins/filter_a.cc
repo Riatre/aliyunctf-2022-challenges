@@ -5,7 +5,7 @@
 namespace {
 
 using hitori::plugins::helpers::GaussianBlur;
-using hitori::plugins::helpers::LibD;
+using hitori::plugins::helpers::Grayscale;
 using hitori::plugins::helpers::CanvasToMat;
 
 class FilterA : public hitori::Plugin {
