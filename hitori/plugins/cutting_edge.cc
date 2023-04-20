@@ -19,13 +19,13 @@ class CuttingEdgePlugin : public hitori::Plugin {
            "frustration guaranteed... oh sorry, 100% satisfaction, I mean.";
   }
   absl::Status Apply(hitori::Canvas& canvas) const override {
-    ColorConverter::GetInstance().RGBToGrayscale(CanvasToHWC(canvas));
-    EdgeDetector::GetInstance().Apply(CanvasToMat(canvas, 0));
+    auto grayed = canvas;
+    ColorConverter::GetInstance().RGBToGrayscale(CanvasToHWC(grayed));
+    EdgeDetector::GetInstance().Apply(CanvasToMat(grayed, 0));
     for (size_t y = 0; y < canvas.height(); y++) {
       for (size_t x = 0; x < canvas.width(); x++) {
-        auto [r, g, b] = canvas.GetPixel(x, y);
-        g = b = r;
-        canvas.SetPixel(x, y, {r, g, b});
+        auto [r, g, b] = grayed.GetPixel(x, y);
+        canvas.SetPixel(x, y, {r, r, r});
       }
     }
     return absl::OkStatus();

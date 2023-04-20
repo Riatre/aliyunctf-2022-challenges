@@ -19,8 +19,8 @@ class CloudyClear : public hitori::Plugin {
   absl::Status Apply(hitori::Canvas& canvas) const override {
     for (size_t c = 0; c < hitori::kChannels; c++) {
       auto image = CanvasToMat(canvas, c);
-      MedianFilter3x3().Apply(image);
-      HistogramEqualization().GlobalHistogramEqualization(image);
+      MedianFilter3x3::GetInstance().Apply(image);
+      HistogramEqualization::GetInstance().GlobalHistogramEqualization(image);
     }
     return absl::OkStatus();
   }

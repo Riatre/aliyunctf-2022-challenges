@@ -1,11 +1,9 @@
 #include "plugins/image_utils.h"
 
-#include "absl/log/check.h"
-
 namespace hitori::plugins {
 
 Mat CanvasToMat(Canvas& canvas, size_t channel_index) {
-  CHECK(channel_index < 3);
+  if (channel_index >= 3) __builtin_trap();
   return {canvas.data() + channel_index,
           {stdex::dextents<size_t, 2>{canvas.height(), canvas.width()},
            std::array<size_t, 2>{canvas.width() * kChannels, kChannels}}};

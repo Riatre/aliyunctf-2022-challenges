@@ -22,7 +22,7 @@ class ExtremelyAccessible : public hitori::Plugin {
     auto mask_canvas = canvas;
     auto mask = CanvasToMat(mask_canvas, 0);
     MedianFilter3x3::GetInstance().Apply(mask);
-    hitori::plugins::EdgeDetector::GetInstance().Apply(mask);
+    EdgeDetector::GetInstance().Apply(mask);
     Enhancer::GetInstance().MaskedBrighten(CanvasToHWC(canvas), 1.2, mask);
     return absl::OkStatus();
   }

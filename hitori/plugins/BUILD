@@ -120,7 +120,6 @@ cc_library(
     hdrs = ["image_utils.h"],
     deps = [
         "//:canvas",
-        "@com_google_absl//absl/log:check",
         "@mdspan",
     ],
 )
