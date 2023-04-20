@@ -13,7 +13,7 @@ class FilterD : public hitori::Plugin {
   std::string Description() const override { return "This is a filter plugin."; }
   absl::Status Apply(hitori::Canvas& canvas) const override {
     hitori::plugins::helpers::Grayscale::GetInstance().Use();
-    hitori::plugins::helpers::LibE::GetInstance().Use();
+    hitori::plugins::helpers::Sobel::GetInstance().Use();
     hitori::plugins::helpers::LibF::GetInstance().Use();
     return absl::OkStatus();
   }

@@ -28,7 +28,7 @@ cc_binary(
     srcs = ["filter_b.cc"],
     linkshared = True,
     deps = [
-        ":e",
+        ":sobel",
         ":median_filter",
         "//:plugin",
     ],
@@ -51,7 +51,7 @@ cc_binary(
     linkshared = True,
     deps = [
         ":color_converter",
-        ":e",
+        ":sobel",
         ":f",
         "//:plugin",
     ],
@@ -96,9 +96,12 @@ cc_library(
 )
 
 cc_library(
-    name = "e",
-    srcs = ["e.cc"],
-    hdrs = ["e.h"],
+    name = "sobel",
+    srcs = ["sobel.cc"],
+    hdrs = ["sobel.h"],
+    deps = [
+        ":image_utils",
+    ],
 )
 
 cc_library(

@@ -15,7 +15,7 @@ class FilterB : public hitori::Plugin {
       hitori::plugins::helpers::MedianFilter3x3::GetInstance().Apply(
           hitori::plugins::helpers::CanvasToMat(canvas, c));
     }
-    hitori::plugins::helpers::LibE::GetInstance().Use();
+    hitori::plugins::helpers::Sobel::GetInstance().Use();
     return absl::OkStatus();
   }
 };

@@ -8,7 +8,6 @@ namespace hitori::plugins::helpers {
 
 class Laplacian {
  public:
-  static constexpr double kThreshold = 35.4274;
   Laplacian();
   ~Laplacian();
 
@@ -17,7 +16,7 @@ class Laplacian {
   Laplacian(Laplacian&&) = delete;
   Laplacian& operator=(Laplacian&&) = delete;
 
-  void Apply(Mat image) const;
+  void Apply(Mat image, double threshold = 35.4274) const;
 
   static Laplacian& GetInstance() {
     static Laplacian inst;

@@ -23,7 +23,7 @@ void Laplacian::InitKernel() {
   kernel_[1][1] = -4;
 }
 
-void Laplacian::Apply(Mat image) const {
+void Laplacian::Apply(Mat image, double threshold) const {
   static_assert(image.rank() == 2, "should be a grayscale image");
   for (size_t i = 0; i < image.extent(0); ++i) {
     for (size_t j = 0; j < image.extent(1); ++j) {
@@ -41,7 +41,7 @@ void Laplacian::Apply(Mat image) const {
           sum += kernel_[ki][kj] * val;
         }
       }
-      image(i, j) = sum > kThreshold ? 255.0 : 0.0;
+      image(i, j) = sum > threshold ? 255.0 : 0.0;
     }
   }
 }
