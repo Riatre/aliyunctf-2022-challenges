@@ -2,18 +2,13 @@ load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 
 package(default_visibility = ["//visibility:public"])
 
-# A: Median Filter -> Histogram equalization
-# B: Grayscale -> Gaussian -> Auto-detect Edge Detector (Sobel, Laplacian or Canny; vtable) [DONE]
-# C: Increase Saturation -> Brighten
-# D: Median Filter -> Brighten(image, Gaussian on first channel only -> auto-detect edge detector)
-
 filegroup(
     name = "plugins",
     srcs = [
         "cloudy_clear.so",
         "cutting_edge.so",
-        "filter_c.so",
-        "filter_d.so",
+        "extremely_accessible.so",
+        "mtxx.so",
     ],
 )
 
@@ -22,8 +17,8 @@ cc_binary(
     srcs = ["cloudy_clear.cc"],
     linkshared = True,
     deps = [
-        ":median_filter",
         ":histogram_equalization",
+        ":median_filter",
         "//:plugin",
     ],
 )
@@ -33,31 +28,30 @@ cc_binary(
     srcs = ["cutting_edge.cc"],
     linkshared = True,
     deps = [
-        ":color_converter",
         ":automagical_edge_detector",
-        "//:plugin",
-    ],
-)
-
-cc_binary(
-    name = "filter_c.so",
-    srcs = ["filter_c.cc"],
-    linkshared = True,
-    deps = [
-        ":f",
-        ":laplacian",
-        "//:plugin",
-    ],
-)
-
-cc_binary(
-    name = "filter_d.so",
-    srcs = ["filter_d.cc"],
-    linkshared = True,
-    deps = [
         ":color_converter",
-        ":sobel",
-        ":f",
+        "//:plugin",
+    ],
+)
+
+cc_binary(
+    name = "extremely_accessible.so",
+    srcs = ["extremely_accessible.cc"],
+    linkshared = True,
+    deps = [
+        ":automagical_edge_detector",
+        ":enhancer",
+        ":median_filter",
+        "//:plugin",
+    ],
+)
+
+cc_binary(
+    name = "mtxx.so",
+    srcs = ["mtxx.cc"],
+    linkshared = True,
+    deps = [
+        ":enhancer",
         "//:plugin",
     ],
 )
@@ -67,8 +61,8 @@ cc_library(
     srcs = ["automagical_edge_detector.cc"],
     hdrs = ["automagical_edge_detector.h"],
     deps = [
-        ":image_utils",
         ":gaussian_blur",
+        ":image_utils",
     ],
 )
 
@@ -116,6 +110,15 @@ cc_library(
     name = "histogram_equalization",
     srcs = ["histogram_equalization.cc"],
     hdrs = ["histogram_equalization.h"],
+    deps = [
+        ":image_utils",
+    ],
+)
+
+cc_library(
+    name = "enhancer",
+    srcs = ["enhancer.cc"],
+    hdrs = ["enhancer.h"],
     deps = [
         ":image_utils",
     ],
