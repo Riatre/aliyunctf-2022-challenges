@@ -7,6 +7,9 @@ COPY --from=ubuntu:jammy-20221130 / /srv
 COPY bin/hitori /srv/app/run
 COPY bin/assets/ /srv/app/assets/
 COPY bin/plugins/ /srv/app/plugins/
+# Who needs seccomp when you ~~can simply use distroless~~ someone told me gcr.io is inaccessible in China okay, then:
+# Who needs seccomp when you can simply remove /bin/sh?
+RUN chmod -x /srv/bin/sh
 
 ENV JAIL_MEM=128M
 ENV JAIL_TMP_SIZE=32M
