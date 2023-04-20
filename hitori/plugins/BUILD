@@ -39,7 +39,7 @@ cc_binary(
     srcs = ["filter_c.cc"],
     linkshared = True,
     deps = [
-        ":c",
+        ":laplacian",
         ":f",
         "//:plugin",
     ],
@@ -78,9 +78,12 @@ cc_library(
 )
 
 cc_library(
-    name = "c",
-    srcs = ["c.cc"],
-    hdrs = ["c.h"],
+    name = "laplacian",
+    srcs = ["laplacian.cc"],
+    hdrs = ["laplacian.h"],
+    deps = [
+        ":image_utils",
+    ]
 )
 
 cc_library(

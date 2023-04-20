@@ -5,7 +5,7 @@ load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 pkg_zip(
     name = "source_zip",
     srcs = [
-        "//:pkg_source_handout",
+        "//:pkg_handout_source",
     ],
     out = "hitori.zip",
 )
