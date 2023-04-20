@@ -28,6 +28,7 @@ cc_library(
     name = "canvas",
     srcs = ["canvas.cc"],
     hdrs = ["canvas.h"],
+    visibility = ["//visibility:public"],
     deps = [
         "@com_github_randy408_libspng//:spng",
         "@com_google_absl//absl/log:check",
@@ -35,7 +36,6 @@ cc_library(
         "@com_google_absl//absl/status:statusor",
         "@fmt",
     ],
-    visibility = ["//visibility:public"],
 )
 
 cc_library(
@@ -111,8 +111,8 @@ pkg_filegroup(
     name = "pkg_handout_source",
     srcs = [
         ":pkg_source",
-        "//bazel:pkg",
         "//assets:pkg_handout_source",
+        "//bazel:pkg",
         "//plugins:pkg_source",
     ],
     prefix = "src/",
@@ -135,5 +135,6 @@ pkg_tar(
         ":pkg_handout_source",
     ],
     extension = ".tar.gz",
+    mode = "0644",
     visibility = ["//visibility:public"],
 )
