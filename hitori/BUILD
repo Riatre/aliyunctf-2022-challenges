@@ -14,7 +14,6 @@ cc_binary(
         "//assets:example_images",
         "//plugins",
     ],
-    features = ["static_libstdcxx"],
     deps = [
         ":canvas",
         ":plugin_manager",
