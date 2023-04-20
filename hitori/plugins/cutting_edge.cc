@@ -23,10 +23,9 @@ class CuttingEdgePlugin : public hitori::Plugin {
     EdgeDetector::GetInstance().Apply(CanvasToMat(canvas, 0));
     for (size_t y = 0; y < canvas.height(); y++) {
       for (size_t x = 0; x < canvas.width(); x++) {
-        auto [r, g, b] = canvas.GetPixel(y, x);
-        // g = b = r;
-        g = b = 0;
-        canvas.SetPixel(y, x, {r, g, b});
+        auto [r, g, b] = canvas.GetPixel(x, y);
+        g = b = r;
+        canvas.SetPixel(x, y, {r, g, b});
       }
     }
     return absl::OkStatus();

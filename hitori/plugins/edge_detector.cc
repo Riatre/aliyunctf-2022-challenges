@@ -1,5 +1,7 @@
 #include "plugins/edge_detector.h"
 
+#include <algorithm>
+#include <mdarray>
 #include <random>
 
 #include "plugins/gaussian_blur.h"
@@ -10,6 +12,8 @@ using hitori::plugins::intl::EdgeDetectorAlgo;
 
 // Implementation in anonymous namespace, good hygiene, nothing sus, move along.
 namespace {
+
+using FloatArray2D = stdex::mdarray<float, stdex::dextents<size_t, 2>>;
 
 class Laplacian : public EdgeDetectorAlgo {
  public:
@@ -22,15 +26,17 @@ class Laplacian : public EdgeDetectorAlgo {
 
   void Apply(Mat image) override {
     static_assert(image.rank() == 2, "should be a grayscale image");
-    for (size_t i = 0; i < image.extent(0); ++i) {
-      for (size_t j = 0; j < image.extent(1); ++j) {
-        double sum = 0.0;
-        for (size_t ki = 0; ki < 3; ++ki) {
-          for (size_t kj = 0; kj < 3; ++kj) {
-            uint8_t val = 0;
+    FloatArray2D tmp(image.extent(0), image.extent(1));
+    float min = INFINITY, max = -INFINITY;
+    for (size_t i = 0; i < image.extent(0); i++) {
+      for (size_t j = 0; j < image.extent(1); j++) {
+        float sum = 0;
+        for (size_t ki = 0; ki < 3; ki++) {
+          for (size_t kj = 0; kj < 3; kj++) {
+            float val = 0;
             if (size_t ii = i + ki - 1, ij = j + kj - 1;
                 ii >= 0 && ii < image.extent(0) && ij >= 0 && ij < image.extent(1)) {
-              val = image(ii, ij);
+              val = image(ii, ij) / 255.;
             } else {
               sum = 0.0;
               break;
@@ -38,7 +44,14 @@ class Laplacian : public EdgeDetectorAlgo {
             sum += kernel_[ki][kj] * val;
           }
         }
-        image(i, j) = sum;
+        tmp(i, j) = sum;
+        min = std::min(min, sum);
+        max = std::max(max, sum);
+      }
+    }
+    for (size_t i = 0; i < image.extent(0); i++) {
+      for (size_t j = 0; j < image.extent(1); j++) {
+        image(i, j) = static_cast<uint8_t>(std::round((tmp(i, j) - min / (max - min)) * 255));
       }
     }
   }
@@ -53,13 +66,13 @@ class Laplacian : public EdgeDetectorAlgo {
       }
     }
     kernel_[0][0] = 0;
-    kernel_[0][1] = 1;
+    kernel_[0][1] = -1;
     kernel_[0][2] = 0;
-    kernel_[1][0] = 1;
-    kernel_[1][1] = -4;
-    kernel_[1][2] = 1;
+    kernel_[1][0] = -1;
+    kernel_[1][1] = 4;
+    kernel_[1][2] = -1;
     kernel_[2][0] = 0;
-    kernel_[2][1] = 1;
+    kernel_[2][1] = -1;
     kernel_[2][2] = 0;
   }
 
@@ -77,17 +90,19 @@ class Sobel : public EdgeDetectorAlgo {
   }
   void Apply(Mat image) override {
     static_assert(image.rank() == 2, "should be a grayscale image");
-    if (image.extent(0) >= 3 || image.extent(1) >= 3) {
+    if (image.extent(0) >= 3 && image.extent(1) >= 3) {
+      FloatArray2D tmp(image.extent(0), image.extent(1));
+      float min = INFINITY, max = -INFINITY;
       for (size_t i = 1; i < image.extent(0) - 1; i++) {
         for (size_t j = 1; j < image.extent(1) - 1; j++) {
-          double s1 = 10.0;
-          double s2 = 0.0;
+          float s1 = 0.0;
+          float s2 = 0.0;
           for (size_t ki = 0; ki < 3; ++ki) {
             for (size_t kj = 0; kj < 3; ++kj) {
-              uint8_t val = 0;
+              float val = 0;
               if (size_t ii = i + ki - 1, ij = j + kj - 1;
                   ii >= 0 && ii < image.extent(0) && ij >= 0 && ij < image.extent(1)) {
-                val = image(ii, ij);
+                val = image(ii, ij) / 255.;
               } else {
                 s1 = 0.0;
                 s2 = 0.0;
@@ -97,7 +112,15 @@ class Sobel : public EdgeDetectorAlgo {
               s2 += gy_[ki][kj] * val;
             }
           }
-          image(i, j) = sqrt(s1 * s1 + s2 * s2);
+          float mag = std::sqrt(s1 * s1 + s2 * s2);
+          tmp(i, j) = mag;
+          min = std::min(min, mag);
+          max = std::max(max, mag);
+        }
+      }
+      for (size_t i = 1; i < image.extent(0) - 1; i++) {
+        for (size_t j = 1; j < image.extent(1) - 1; j++) {
+          image(i, j) = static_cast<uint8_t>(std::round((tmp(i, j) - min / (max - min)) * 255));
         }
       }
     }
