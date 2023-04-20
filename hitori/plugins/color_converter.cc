@@ -7,8 +7,7 @@
 namespace hitori::plugins::helpers {
 
 ColorConverter::ColorConverter() {}
-
-ColorConverter::~ColorConverter() {}
+ColorConverter::~ColorConverter() = default;
 
 void ColorConverter::RGBToGrayscale(HWCMat rgb) const {
   static_assert(rgb.rank() == 3);

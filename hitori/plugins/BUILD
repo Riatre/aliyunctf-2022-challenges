@@ -2,34 +2,39 @@ load("@rules_pkg//pkg:mappings.bzl", "pkg_files")
 
 package(default_visibility = ["//visibility:public"])
 
+# A: Median Filter -> Histogram equalization
+# B: Grayscale -> Gaussian -> Auto-detect Edge Detector (Sobel, Laplacian or Canny; vtable) [DONE]
+# C: Increase Saturation -> Brighten
+# D: Median Filter -> Brighten(image, Gaussian on first channel only -> auto-detect edge detector)
+
 filegroup(
     name = "plugins",
     srcs = [
-        "filter_a.so",
-        "filter_b.so",
+        "cloudy_clear.so",
+        "cutting_edge.so",
         "filter_c.so",
         "filter_d.so",
     ],
 )
 
 cc_binary(
-    name = "filter_a.so",
-    srcs = ["filter_a.cc"],
+    name = "cloudy_clear.so",
+    srcs = ["cloudy_clear.cc"],
     linkshared = True,
     deps = [
-        ":color_converter",
-        ":gaussian_blur",
+        ":median_filter",
+        ":histogram_equalization",
         "//:plugin",
     ],
 )
 
 cc_binary(
-    name = "filter_b.so",
-    srcs = ["filter_b.cc"],
+    name = "cutting_edge.so",
+    srcs = ["cutting_edge.cc"],
     linkshared = True,
     deps = [
-        ":sobel",
-        ":median_filter",
+        ":color_converter",
+        ":automagical_edge_detector",
         "//:plugin",
     ],
 )
@@ -58,6 +63,16 @@ cc_binary(
 )
 
 cc_library(
+    name = "automagical_edge_detector",
+    srcs = ["automagical_edge_detector.cc"],
+    hdrs = ["automagical_edge_detector.h"],
+    deps = [
+        ":image_utils",
+        ":gaussian_blur",
+    ],
+)
+
+cc_library(
     name = "gaussian_blur",
     srcs = ["gaussian_blur.cc"],
     hdrs = ["gaussian_blur.h"],
@@ -78,36 +93,12 @@ cc_library(
 )
 
 cc_library(
-    name = "laplacian",
-    srcs = ["laplacian.cc"],
-    hdrs = ["laplacian.h"],
-    deps = [
-        ":image_utils",
-    ],
-)
-
-cc_library(
     name = "color_converter",
     srcs = ["color_converter.cc"],
     hdrs = ["color_converter.h"],
     deps = [
         ":image_utils",
     ],
-)
-
-cc_library(
-    name = "sobel",
-    srcs = ["sobel.cc"],
-    hdrs = ["sobel.h"],
-    deps = [
-        ":image_utils",
-    ],
-)
-
-cc_library(
-    name = "f",
-    srcs = ["f.cc"],
-    hdrs = ["f.h"],
 )
 
 cc_library(
@@ -118,6 +109,15 @@ cc_library(
         "//:canvas",
         "@com_google_absl//absl/log:check",
         "@mdspan",
+    ],
+)
+
+cc_library(
+    name = "histogram_equalization",
+    srcs = ["histogram_equalization.cc"],
+    hdrs = ["histogram_equalization.h"],
+    deps = [
+        ":image_utils",
     ],
 )
 
