@@ -2,7 +2,7 @@
 
 #include <cstdlib>
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 MedianFilter3x3::MedianFilter3x3() {}
 
@@ -30,4 +30,4 @@ void MedianFilter3x3::Apply(Mat image) {
   }
 }
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

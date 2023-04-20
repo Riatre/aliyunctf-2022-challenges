@@ -4,7 +4,7 @@
 
 #include "plugins/image_utils.h"
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 class Enhancer {
  public:
@@ -26,4 +26,4 @@ class Enhancer {
   }
 };
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

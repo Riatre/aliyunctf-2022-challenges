@@ -6,7 +6,7 @@
 
 namespace stdex = std::experimental;
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 using Mat = stdex::mdspan<uint8_t, stdex::dextents<size_t, 2>, stdex::layout_stride>;
 using HWCMat =
@@ -19,4 +19,4 @@ Mat CanvasToMat(Canvas& canvas, size_t channel_index);
 HWCMat CanvasToHWC(Canvas& canvas);
 CHWMat CanvasToCHW(Canvas& canvas);
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

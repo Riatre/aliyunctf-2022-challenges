@@ -20,8 +20,8 @@ class EdgeDetectorAlgo {
  public:
   virtual ~EdgeDetectorAlgo() = default;
   // We run the algo which fits the image best.
-  virtual double Fitness(helpers::Mat image);
-  virtual void Apply(helpers::Mat image) = 0;
+  virtual double Fitness(Mat image);
+  virtual void Apply(Mat image) = 0;
   virtual const AlgoFlags& Flags() const = 0;
 };
 
@@ -37,7 +37,7 @@ class EdgeDetector {
   EdgeDetector(EdgeDetector&&) = delete;
   EdgeDetector& operator=(EdgeDetector&&) = delete;
 
-  void Apply(helpers::Mat image, std::optional<double> threshold = std::nullopt);
+  void Apply(Mat image, std::optional<double> threshold = std::nullopt);
 
   static EdgeDetector& GetInstance() {
     static EdgeDetector inst;

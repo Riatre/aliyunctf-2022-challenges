@@ -1,12 +1,12 @@
 #include "canvas.h"
 #include "plugin.h"
-#include "plugins/automagical_edge_detector.h"
+#include "plugins/edge_detector.h"
 #include "plugins/enhancer.h"
 #include "plugins/median_filter.h"
 
 namespace {
 
-using namespace hitori::plugins::helpers;
+using namespace hitori::plugins;
 
 class ExtremelyAccessible : public hitori::Plugin {
  public:

@@ -1,10 +1,10 @@
-#include "plugins/automagical_edge_detector.h"
+#include "plugins/edge_detector.h"
 
 #include <random>
 
 #include "plugins/gaussian_blur.h"
 
-using hitori::plugins::helpers::Mat;
+using hitori::plugins::Mat;
 using hitori::plugins::intl::AlgoFlags;
 using hitori::plugins::intl::EdgeDetectorAlgo;
 
@@ -162,7 +162,7 @@ void EdgeDetector::Apply(Mat image, std::optional<double> threshold) {
     }
   }
   if (best->Flags().need_gaussian_blur) {
-    helpers::GaussianBlur::GetInstance().Apply(image);
+    GaussianBlur::GetInstance().Apply(image);
   }
   best->Apply(image);
   if (best->Flags().need_thresholding) {

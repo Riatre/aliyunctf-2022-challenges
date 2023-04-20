@@ -4,7 +4,7 @@
 
 #include "plugins/image_utils.h"
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 class GaussianBlur {
  public:
@@ -31,4 +31,4 @@ class GaussianBlur {
   double kernel_[2*kRadius+1][2*kRadius+1];
 };
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

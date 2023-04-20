@@ -4,7 +4,7 @@
 
 #include "plugins/image_utils.h"
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 class HistogramEqualization {
  public:
@@ -24,4 +24,4 @@ class HistogramEqualization {
   }
 };
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

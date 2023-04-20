@@ -9,6 +9,7 @@ filegroup(
         "cutting_edge.so",
         "extremely_accessible.so",
         "mtxx.so",
+        "overdose.so",
     ],
 )
 
@@ -28,7 +29,7 @@ cc_binary(
     srcs = ["cutting_edge.cc"],
     linkshared = True,
     deps = [
-        ":automagical_edge_detector",
+        ":edge_detector",
         ":color_converter",
         "//:plugin",
     ],
@@ -39,9 +40,19 @@ cc_binary(
     srcs = ["extremely_accessible.cc"],
     linkshared = True,
     deps = [
-        ":automagical_edge_detector",
+        ":edge_detector",
         ":enhancer",
         ":median_filter",
+        "//:plugin",
+    ],
+)
+
+cc_binary(
+    name = "overdose.so",
+    srcs = ["overdose.cc"],
+    linkshared = True,
+    deps = [
+        ":gaussian_blur",
         "//:plugin",
     ],
 )
@@ -57,11 +68,29 @@ cc_binary(
 )
 
 cc_library(
-    name = "automagical_edge_detector",
-    srcs = ["automagical_edge_detector.cc"],
-    hdrs = ["automagical_edge_detector.h"],
+    name = "edge_detector",
+    srcs = ["edge_detector.cc"],
+    hdrs = ["edge_detector.h"],
     deps = [
         ":gaussian_blur",
+        ":image_utils",
+    ],
+)
+
+cc_library(
+    name = "color_converter",
+    srcs = ["color_converter.cc"],
+    hdrs = ["color_converter.h"],
+    deps = [
+        ":image_utils",
+    ],
+)
+
+cc_library(
+    name = "enhancer",
+    srcs = ["enhancer.cc"],
+    hdrs = ["enhancer.h"],
+    deps = [
         ":image_utils",
     ],
 )
@@ -77,19 +106,9 @@ cc_library(
 )
 
 cc_library(
-    name = "median_filter",
-    srcs = ["median_filter.cc"],
-    hdrs = ["median_filter.h"],
-    deps = [
-        ":image_utils",
-        "@mdspan",
-    ],
-)
-
-cc_library(
-    name = "color_converter",
-    srcs = ["color_converter.cc"],
-    hdrs = ["color_converter.h"],
+    name = "histogram_equalization",
+    srcs = ["histogram_equalization.cc"],
+    hdrs = ["histogram_equalization.h"],
     deps = [
         ":image_utils",
     ],
@@ -107,20 +126,12 @@ cc_library(
 )
 
 cc_library(
-    name = "histogram_equalization",
-    srcs = ["histogram_equalization.cc"],
-    hdrs = ["histogram_equalization.h"],
+    name = "median_filter",
+    srcs = ["median_filter.cc"],
+    hdrs = ["median_filter.h"],
     deps = [
         ":image_utils",
-    ],
-)
-
-cc_library(
-    name = "enhancer",
-    srcs = ["enhancer.cc"],
-    hdrs = ["enhancer.h"],
-    deps = [
-        ":image_utils",
+        "@mdspan",
     ],
 )
 

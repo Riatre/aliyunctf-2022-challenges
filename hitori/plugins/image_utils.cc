@@ -2,7 +2,7 @@
 
 #include "absl/log/check.h"
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 Mat CanvasToMat(Canvas& canvas, size_t channel_index) {
   CHECK(channel_index < 3);
@@ -21,4 +21,4 @@ CHWMat CanvasToCHW(Canvas& canvas) {
            std::array<size_t, 3>{1, canvas.width() * kChannels, kChannels}}};
 }
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

@@ -13,7 +13,7 @@ double Gaussian(double x, double mu, double sigma) {
 
 }  // namespace
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 GaussianBlur::GaussianBlur() { InitKernel(); }
 
@@ -61,4 +61,4 @@ void GaussianBlur::Apply(Mat image) const {
   }
 }
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

@@ -4,7 +4,7 @@
 
 #include "plugins/image_utils.h"
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 ColorConverter::ColorConverter() {}
 ColorConverter::~ColorConverter() = default;
@@ -24,4 +24,4 @@ void ColorConverter::RGBToGrayscale(HWCMat rgb) const {
   }
 }
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

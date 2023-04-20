@@ -5,6 +5,8 @@
 
 namespace {
 
+using namespace hitori::plugins;
+
 class MTXX : public hitori::Plugin {
  public:
   ~MTXX() override = default;
@@ -15,9 +17,9 @@ class MTXX : public hitori::Plugin {
            "understanding dank meme is not part of the challenge.";
   }
   absl::Status Apply(hitori::Canvas& canvas) const override {
-    auto im = hitori::plugins::helpers::CanvasToHWC(canvas);
-    hitori::plugins::helpers::Enhancer::GetInstance().IncreaseSaturation(im, 1.5);
-    hitori::plugins::helpers::Enhancer::GetInstance().Brighten(im, 0.5);
+    auto im = CanvasToHWC(canvas);
+    Enhancer::GetInstance().IncreaseSaturation(im, 1.337);
+    Enhancer::GetInstance().Brighten(im, 0.8954);
     return absl::OkStatus();
   }
 };

@@ -4,9 +4,9 @@
 
 namespace {
 
-using hitori::plugins::helpers::CanvasToMat;
-using hitori::plugins::helpers::HistogramEqualization;
-using hitori::plugins::helpers::MedianFilter3x3;
+using hitori::plugins::CanvasToMat;
+using hitori::plugins::HistogramEqualization;
+using hitori::plugins::MedianFilter3x3;
 
 class CloudyClear : public hitori::Plugin {
  public:

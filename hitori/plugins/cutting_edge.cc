@@ -1,13 +1,13 @@
 #include "plugin.h"
-#include "plugins/automagical_edge_detector.h"
+#include "plugins/edge_detector.h"
 #include "plugins/color_converter.h"
 
 namespace {
 
 using hitori::plugins::EdgeDetector;
-using hitori::plugins::helpers::CanvasToHWC;
-using hitori::plugins::helpers::CanvasToMat;
-using hitori::plugins::helpers::ColorConverter;
+using hitori::plugins::CanvasToHWC;
+using hitori::plugins::CanvasToMat;
+using hitori::plugins::ColorConverter;
 
 class CuttingEdgePlugin : public hitori::Plugin {
  public:
@@ -24,7 +24,8 @@ class CuttingEdgePlugin : public hitori::Plugin {
     for (size_t y = 0; y < canvas.height(); y++) {
       for (size_t x = 0; x < canvas.width(); x++) {
         auto [r, g, b] = canvas.GetPixel(y, x);
-        g = b = r;
+        // g = b = r;
+        g = b = 0;
         canvas.SetPixel(y, x, {r, g, b});
       }
     }

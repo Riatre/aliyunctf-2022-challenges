@@ -99,7 +99,7 @@ std::tuple<uint8_t, uint8_t, uint8_t> HSV2RGB(float h, float s, float v) {
 
 }  // namespace
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 Enhancer::Enhancer() {}
 Enhancer::~Enhancer() = default;
@@ -149,4 +149,4 @@ void Enhancer::MaskedBrighten(HWCMat image, double factor, const Mat mask) const
   }
 }
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

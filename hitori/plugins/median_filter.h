@@ -3,7 +3,7 @@
 #include <memory>
 #include "plugins/image_utils.h"
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 class MedianFilter3x3 {
  public:
@@ -26,4 +26,4 @@ class MedianFilter3x3 {
   uint8_t window_[9];
 };
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins

@@ -4,7 +4,7 @@
 
 #include "plugins/image_utils.h"
 
-namespace hitori::plugins::helpers {
+namespace hitori::plugins {
 
 HistogramEqualization::HistogramEqualization() = default;
 HistogramEqualization::~HistogramEqualization() = default;
@@ -42,4 +42,4 @@ void HistogramEqualization::GlobalHistogramEqualization(Mat image) const {
   }
 }
 
-}  // namespace hitori::plugins::helpers
+}  // namespace hitori::plugins
