@@ -133,7 +133,8 @@ void Enhancer::Brighten(HWCMat image, double factor) const {
 }
 
 void Enhancer::MaskedBrighten(HWCMat image, double factor, const Mat mask) const {
-  CHECK(image.extents() == mask.extents());
+  CHECK_EQ(image.extent(0), mask.extent(0));
+  CHECK_EQ(image.extent(1), mask.extent(1));
   for (size_t i = 0; i < image.extent(0); i++) {
     for (size_t j = 0; j < image.extent(1); j++) {
       if (mask(i, j) == 0) {
