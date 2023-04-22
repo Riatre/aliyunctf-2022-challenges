@@ -6,16 +6,18 @@
 using namespace ::testing;
 
 TEST(Speck, TestVectorEncrypt) {
-  const char *input = " made it equival";
+  const char *input = " made it equival made it equival";
   unsigned char key[16];
   for (int i = 0; i < 16; i++) {
     key[i] = i;
   }
-  unsigned char output[16];
+  unsigned char output[32];
   lyla::cipher::Encrypt(output, input, sizeof(output), (uint64_t *)key);
   EXPECT_THAT(output,
               ElementsAre(0x18, 0x0d, 0x57, 0x5c, 0xdf, 0xfe, 0x60, 0x78, 0x65,
-                          0x32, 0x78, 0x79, 0x51, 0x98, 0x5d, 0xa6));
+                          0x32, 0x78, 0x79, 0x51, 0x98, 0x5d, 0xa6, 0x18, 0x0d,
+                          0x57, 0x5c, 0xdf, 0xfe, 0x60, 0x78, 0x65, 0x32, 0x78,
+                          0x79, 0x51, 0x98, 0x5d, 0xa6));
 }
 
 TEST(Speck, TestVectorDecrypt) {

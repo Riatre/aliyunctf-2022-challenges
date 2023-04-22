@@ -56,8 +56,8 @@ void Encrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
   uint64_t key[kRounds];
   ExpandKey(key, rawkey);
   for (size_t i = 0; i < size; i += 16) {
-    uint64_t *current_dst = reinterpret_cast<uint64_t *>(dst);
-    const uint64_t *current_src = reinterpret_cast<const uint64_t *>(src);
+    uint64_t *current_dst = reinterpret_cast<uint64_t *>((char*)dst + i);
+    const uint64_t *current_src = reinterpret_cast<const uint64_t *>((char*)src + i);
     uint64_t x = current_src[0], y = current_src[1];
     #pragma GCC unroll 8
     for (int i = 0; i < kRounds; i++) {
@@ -76,8 +76,8 @@ void Decrypt(void *dst, const void *src, size_t size, uint64_t rawkey[2]) {
   uint64_t key[kRounds];
   ExpandKey(key, rawkey);
   for (size_t i = 0; i < size; i += 16) {
-    uint64_t *current_dst = reinterpret_cast<uint64_t *>(dst);
-    const uint64_t *current_src = reinterpret_cast<const uint64_t *>(src);
+    uint64_t *current_dst = reinterpret_cast<uint64_t *>((char*)dst + i);
+    const uint64_t *current_src = reinterpret_cast<const uint64_t *>((char*)src + i);
     uint64_t x = current_src[0], y = current_src[1];
     #pragma GCC unroll 8
     for (int i = kRounds - 1; i >= 0; i--) {
